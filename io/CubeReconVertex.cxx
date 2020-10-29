@@ -3,7 +3,8 @@
 
 ClassImp(Cube::ReconVertex);
 
-Cube::ReconVertex::ReconVertex() {
+Cube::ReconVertex::ReconVertex()
+    : ReconObject("vertex","Reconstructed SFG Vertex") {
     fState = new Cube::VertexState;
     fNodes = new Cube::ReconNodeContainerImpl<Cube::VertexState>;
 }

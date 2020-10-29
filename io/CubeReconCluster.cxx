@@ -12,7 +12,8 @@
 ClassImp(Cube::ReconCluster);
 
 Cube::ReconCluster::ReconCluster()
-    : fMoments(3), fTemporariesInitialized(false) {
+    : ReconObject("cluster","Reconstructed SFG Cluster"),
+      fMoments(3), fTemporariesInitialized(false) {
     fState = new Cube::ClusterState;
     fNodes = new Cube::ReconNodeContainerImpl<Cube::ClusterState>;
 }
@@ -501,3 +502,9 @@ double Cube::ReconCluster::GetMinorExtent() const {
     return maxLen;
 
 }
+
+// Local Variables:
+// mode:c++
+// c-basic-offset:4
+// compile-command:"$(git rev-parse --show-toplevel)/build/cube-build.sh force"
+// End:

@@ -17,7 +17,6 @@ namespace {
 Cube::ReconObject::ReconObject()
     : TNamed("unnamed","Reconstruction Object"),
       fQuality(0), fState(NULL), fNodes(NULL), fStatus(0), fNDOF(0) {
-    SetUniqueID(++gReconObjectId);
 }
 
 Cube::ReconObject::ReconObject(const char* name, const char* title)

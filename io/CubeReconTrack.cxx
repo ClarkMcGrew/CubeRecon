@@ -6,7 +6,8 @@
 
 ClassImp(Cube::ReconTrack);
 
-Cube::ReconTrack::ReconTrack() {
+Cube::ReconTrack::ReconTrack()
+    : ReconObject("track","Reconstructed SFG Track") {
     fState = new Cube::TrackState;
     fBackState = new Cube::TrackState;
     fNodes = new Cube::ReconNodeContainerImpl<Cube::TrackState>;
