@@ -1,6 +1,7 @@
 #ifndef CubeCompareReconObjects_hxx_seen
 #define CubeCompareReconObjects_hxx_seen
 
+#include <CubeReconNode.hxx>
 #include <CubeReconCluster.hxx>
 #include <CubeReconTrack.hxx>
 #include <CubeReconVertex.hxx>
@@ -22,7 +23,22 @@ namespace Cube {
             Cube::Handle<Cube::ReconCluster> lc = lhs;
             Cube::Handle<Cube::ReconCluster> rc = rhs;
 
-            if (lv && rv) return lv->GetNodes().size() > rv->GetNodes().size();
+            if (lv && rv) {
+                if (lv->GetConstituents()&&!rv->GetConstituents()) return true;
+                if (!lv->GetConstituents()&&rv->GetConstituents()) return false;
+                if (lv->GetConstituents() && rv->GetConstituents()) {
+                    if (lv->GetConstituents()->size()
+                        != rv->GetConstituents()->size()) {
+                        return (lv->GetConstituents()->size()
+                                > rv->GetConstituents()->size());
+                    }
+                    int s1 = -1;
+                    if (lv->GetHitSelection()) s1=lv->GetHitSelection()->size();
+                    int s2 = -1;
+                    if (rv->GetHitSelection()) s2=rv->GetHitSelection()->size();
+                    return (s1 > s2);
+                }
+            }
             if (lv && !rv) return true;
             if (!lv && rv) return false;
 
