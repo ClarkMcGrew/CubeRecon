@@ -243,10 +243,14 @@ int Cube::TFitChangeHandler::ShowReconVertex(
         return index;
     }
 
+    std::stringstream title;
+
     ++index;
     TLorentzVector pos = state->GetPosition();
     TLorentzVector var = state->GetPositionVariance();
-    double uncertainty = var.Vect().Mag();
+    double uncertainty = var.X();
+    uncertainty = std::max(var.Y(),uncertainty);
+    uncertainty = std::max(var.Z(),uncertainty);
     if (uncertainty > 0) uncertainty = std::sqrt(uncertainty);
     uncertainty = std::max(5.0*unit::mm,uncertainty);
 
@@ -266,31 +270,48 @@ int Cube::TFitChangeHandler::ShowReconVertex(
     gGeoManager = saveGeom;
     list->AddElement(vtxShape);
 
-    std::cout << "Vertex(" << obj->GetUniqueID() << ") @ "
-              << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
-              <<", "<<unit::AsString(pos.Y(),std::sqrt(var.Y()),"length")
-              <<", "<<unit::AsString(pos.Z(),std::sqrt(var.Z()),"length")
-              << std::endl;;
+    title << "Vertex(" << obj->GetUniqueID() << "): "
+          << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
+          <<", "<<unit::AsString(pos.Y(),std::sqrt(var.Y()),"length")
+          <<", "<<unit::AsString(pos.Z(),std::sqrt(var.Z()),"length");
+    if (obj->GetHitSelection()) {
+        title <<", H: "<< obj->GetHitSelection()->size();
+    }
 
     Cube::Handle<Cube::ReconObjectContainer>
         constituents = obj->GetConstituents();
     if (constituents) {
+        title << std::endl << "    N: " << constituents->size() << " -- ";
         for (Cube::ReconObjectContainer::iterator o = constituents->begin();
              o != constituents->end(); ++o) {
             Cube::Handle<Cube::ReconTrack> trk = *o;
             if (!trk) continue;
+            title << " " << trk->GetUniqueID();
             TVector3 dir = trk->GetDirection();
-            TVector3 p1 = pos.Vect();
-            TVector3 p2 = pos.Vect() + 200.0*dir;
+            TVector3 p1 = pos.Vect() + 15.0*unit::cm*dir;
+            TVector3 fr = trk->GetFront()->GetPosition().Vect();
+            TVector3 bk = trk->GetBack()->GetPosition().Vect();
+            double frDist = (pos.Vect() - fr).Mag();
+            double bkDist = (pos.Vect() - bk).Mag();
+            double minDist = uncertainty + 2.0*unit::cm;
+            if (frDist > minDist && frDist < bkDist) {
+                p1 = fr;
+            }
+            else if (bkDist > minDist && bkDist < frDist) {
+                p1 = bk;
+            }
             TEveLine* eveHit = new TEveLine(2);
-            eveHit->SetTitle("constiuent");
+            eveHit->SetTitle("constituent");
             eveHit->SetLineWidth(1);
             eveHit->SetLineColor(kRed);
-            eveHit->SetPoint(0,p1.X(),p1.Y(),p1.Z());
-            eveHit->SetPoint(1,p2.X(),p2.Y(),p2.Z());
+            eveHit->SetPoint(0,pos.Vect().X(),pos.Vect().Y(),pos.Vect().Z());
+            eveHit->SetPoint(1,p1.X(),p1.Y(),p1.Z());
             list->AddElement(eveHit);
         }
     }
+    vtxShape->SetTitle(title.str().c_str());
+
+    std::cout << title.str() << std::endl;
 
     return index;
 }
@@ -339,8 +360,8 @@ int Cube::TFitChangeHandler::ShowReconObjects(
     Cube::Handle<Cube::ReconObjectContainer> objects,
     int index) {
     if (!objects) return index;
-    for (Cube::ReconObjectContainer::iterator obj = objects->begin();
-         obj != objects->end(); ++obj) {
+    for (Cube::ReconObjectContainer::reverse_iterator obj = objects->rbegin();
+         obj != objects->rend(); ++obj) {
         if (Cube::TEventDisplay::Get().GUI().GetSkipFitTracksButton()->IsOn()) {
             Cube::Handle<Cube::ReconTrack> track = *obj;
             if (track) continue;
