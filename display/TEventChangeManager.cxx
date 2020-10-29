@@ -180,7 +180,7 @@ void Cube::TEventChangeManager::ChangeEvent(int change) {
 }
 
 void Cube::TEventChangeManager::NewEvent() {
-    std::cout << "New Event " << Cube::gCubeReconEntryNumber << std::endl;
+    std::cout << "New entry" << Cube::gCubeReconEntryNumber << std::endl;
 
     Cube::gCubeReconTree->GetEntry(Cube::gCubeReconEntryNumber);
     Cube::gAlgorithm = Cube::gEvent;
@@ -200,11 +200,19 @@ void Cube::TEventChangeManager::UpdateEvent() {
         return;
     }
 
+    std::cout << "DISPLAY EVENT NUMBER " << gEvent->GetRunId()
+              << "/" << gEvent->GetEventId()
+              << std::endl;
+
     // Run through all of the handlers.
     for (Handlers::iterator h = fUpdateHandlers.begin();
          h != fUpdateHandlers.end(); ++h) {
         (*h)->Apply();
     }
+
+    std::cout << "EVENT NUMBER " << gEvent->GetRunId()
+              << "/" << gEvent->GetEventId()
+              << std::endl;
 
     // Make sure EVE is up to date.
     gEve->Redraw3D(kTRUE);

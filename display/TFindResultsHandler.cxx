@@ -39,14 +39,11 @@ void Cube::TFindResultsHandler::FillEntries(
 }
 
 void Cube::TFindResultsHandler::Apply() {
-    std::cout << "Find results" << std::endl;
     if (!Cube::gEvent) return;
-    std::cout << "have event" << std::endl;
 
     static int lastEvent = -1;
     if (lastEvent == Cube::gEvent->GetEventId()) return;
     lastEvent = Cube::gEvent->GetEventId();
-    std::cout << "have new event" << std::endl;
 
     TGTextEntry* defResult
         = Cube::TEventDisplay::Get().GUI().GetDefaultResult();
@@ -64,7 +61,6 @@ void Cube::TFindResultsHandler::Apply() {
     FillEntries(existingEntries,baseName,topResult);
     for(std::vector<std::string>::iterator e = existingEntries.begin();
         e != existingEntries.end(); ++e) {
-        std::cout << "list entry " << *e << std::endl;
         resultsList->AddEntry((*e).c_str(),++id);
         // Check to see if this result should be selected
         if (defaultResult.size() == 0) continue;

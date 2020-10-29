@@ -21,9 +21,9 @@
 Cube::TReconTrackElement::~TReconTrackElement() {}
 
 Cube::TReconTrackElement::TReconTrackElement(Cube::ReconTrack& track,
-                                           bool showStates,
-                                           bool showObjects,
-                                           bool showDirection)
+                                             bool showStates,
+                                             bool showObjects,
+                                             bool showDirection)
     : TEveElementList(), fValid(true) {
 
     Cube::Handle<Cube::TrackState> frontState = track.GetState();
@@ -61,29 +61,24 @@ Cube::TReconTrackElement::TReconTrackElement(Cube::ReconTrack& track,
         title << "Track(" << track.GetUniqueID() << ") --"
               << " Nodes: " << track.GetNodes().size()
               << " Hits: " << track.GetHitSelection()->size()
-              << " Length: " << unit::AsString(length,"length")
-              << std::endl
+              << " Length: " << unit::AsString(length,"length");
+        title << std::endl
               << "   Energy Deposit: "
               << unit::AsString(track.GetEDeposit(),"pe")
-              << ", dEdX: " << unit::AsString(dEdX,"pe") << "/mm"
-              << std::endl
-              << "   Position:  ("
+              << ", dEdX: " << unit::AsString(dEdX,"pe") << "/mm";
+        title << ", Qual: " << track.GetQuality() << " / " << track.GetNDOF();
+        title << std::endl
+              << "   Front Pos: ("
               << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
               << ", "<<unit::AsString(pos.Y(),std::sqrt(var.Y()),"length")
               << ", "<<unit::AsString(pos.Z(),std::sqrt(var.Z()),"length")
               << ")";
-
         title << std::endl
-              << "   Direction: ("
+              << "   Front Dir: ("
               << unit::AsString(dir.X(), dvar.X(),"direction")
               << ", " << unit::AsString(dir.Y(), dvar.Y(),"direction")
-              << ", " << unit::AsString(dir.Z(), dvar.Z(),"direction")
-              << ")";
+              << ", " << unit::AsString(dir.Z(), dvar.Z(),"direction") << ")";
 
-        title << std::endl
-              << "   Algorithm: " << track.GetAlgorithmName()
-              << " w/ goodness: " << track.GetQuality()
-              << " / " << track.GetNDOF();
     }
 
 #ifdef USE_BACKSTATE
@@ -93,10 +88,10 @@ Cube::TReconTrackElement::TReconTrackElement(Cube::ReconTrack& track,
         TVector3 d = backState->GetDirection().Unit();
         TVector3 dv = backState->GetDirectionVariance();
         title << std::endl
-              << "   Back Pos:  "
+              << "   Back Pos: ("
               << unit::AsString(p.X(),std::sqrt(v.X()),"length")
               <<", "<<unit::AsString(p.Y(),std::sqrt(v.Y()),"length")
-              <<", "<<unit::AsString(p.Z(),std::sqrt(v.Z()),"length");
+              <<", "<<unit::AsString(p.Z(),std::sqrt(v.Z()),"length") << ")";
         title << std::endl
               << "   Back Dir: ("
               << unit::AsString(d.X(), dv.X(),"direction")
