@@ -63,9 +63,10 @@ namespace {
             double var = 0.0;
 
             // This is the minimum direction sigma (uncertainty).  It is based
-            // on the cube size.
+            // on the cube size and that for a straight track, the direction
+            // is really determined by the two end cubes.
             double dsig = cubeSize/length;
-            var += dist*dist*dsig*dsig;
+            var += 2.0*dist*dist*dsig*dsig/12.0;
 
             // This is the minimum position variance based on the cube size.
             var += cubeSize/12.0;
