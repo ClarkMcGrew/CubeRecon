@@ -79,6 +79,9 @@ Cube::CreateTrackFromClusters(const char* name,
                   (*c)->GetHitSelection()->end(),
                   std::back_inserter(*trackHits));
     }
+    Cube::HitSelection::iterator h = std::unique(trackHits->begin(),
+                                                 trackHits->end());
+    trackHits->erase(h,trackHits->end());
     track->SetHitSelection(trackHits);
 
     Cube::ReconNodeContainer& nodes = track->GetNodes();
