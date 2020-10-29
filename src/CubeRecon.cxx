@@ -4,6 +4,7 @@
 #include "CubeTreeRecon.hxx"
 #include "CubeMakeUsed.hxx"
 #include "CubeClusterManagement.hxx"
+#include "CubeCompareReconObjects.hxx"
 
 #include <CubeLog.hxx>
 #include <CubeHandle.hxx>
@@ -98,6 +99,9 @@ Cube::Recon::Process(const Cube::AlgorithmResult& input,
                       std::back_inserter(*finalObjects));
         }
     }
+
+    std::sort(finalObjects->begin(), finalObjects->end(),
+              Cube::CompareReconObjects());
 
     // Save the final objects last.
     result->AddObjectContainer(finalObjects);
