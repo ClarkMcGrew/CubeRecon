@@ -43,6 +43,21 @@ int Cube::Tool::ContainedObject(Cube::ReconObject& object) {
     return minDist;
 }
 
+double Cube::Tool::ContainedPoint(TVector3 point) {
+    double minDist = 1E+10;
+    double xBoundary = 1260.0;
+    minDist = std::min(xBoundary-point.X(),minDist);
+    minDist = std::min(point.X()+xBoundary,minDist);
+    double yBoundary = 1180;
+    minDist = std::min(yBoundary-point.Y(),minDist);
+    minDist = std::min(point.Y()+yBoundary,minDist);
+    double zMin = 3510.0;
+    double zMax = 5510.0;
+    minDist = std::min(zMax-point.Z(),minDist);
+    minDist = std::min(point.Z()-zMin,minDist);
+    return minDist;
+}
+
 // Local Variables:
 // mode:c++
 // c-basic-offset:4

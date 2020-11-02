@@ -16,6 +16,10 @@ namespace Cube {
         // Return a positive integer if the object is contained, otherwise,
         // return zero.
         int ContainedObject(Cube::ReconObject& object);
+
+        // Return a positive value (in mm) if the object is contained,
+        // otherwise, return zero or negative.
+        double ContainedPoint(TVector3 point);
     }
 }
 #endif
