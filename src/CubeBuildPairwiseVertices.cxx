@@ -1,4 +1,5 @@
 #include "CubeBuildPairwiseVertices.hxx"
+#include "CubeCompareReconObjects.hxx"
 
 #include <CubeHandle.hxx>
 #include <CubeReconTrack.hxx>
@@ -84,7 +85,6 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
 
         Cube::Handle<Cube::ReconVertex> bestVertex;
         double bestProb = 0.0;
-        double bestDist = 1E+6;
         for (std::list<Cube::Handle<Cube::ReconVertex>>::iterator v1
                  = allVertices.begin();
              v1 != allVertices.end(); ++v1) {
@@ -93,7 +93,7 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                 if (v1 == v2) continue;
                 double d = ((*v1)->GetPosition().Vect()
                             - (*v2)->GetPosition().Vect()).Mag();
-                if (d > fMaxApproach) continue;
+                // if (d > fMaxApproach) continue;
                 Cube::Handle<Cube::ReconVertex> checkVertex
                     = CombineVertices(*v1,*v2);
                 if (!checkVertex) continue;
@@ -102,7 +102,6 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                 if (bestProb > prob) continue;
                 vtx1 = v1;
                 vtx2 = v2;
-                bestDist = d;
                 bestVertex = checkVertex;
                 bestProb = prob;
             }
@@ -112,10 +111,14 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
         if (vtx1 == allVertices.end()) break;
         if (vtx2 == allVertices.end()) break;
         if (!bestVertex) break;
+        if (bestProb < fLikelihoodCut) {
+            break;
+        }
 
-        double variance = bestVertex->GetPositionVariance().Vect().Mag();
-        CUBE_LOG(0) << "BuildPairwiseVertices:: Combination vertex "
-                    << bestDist
+        double variance = bestVertex->GetPositionVariance().X();
+        variance = std::max(bestVertex->GetPositionVariance().Y(),variance);
+        variance = std::max(bestVertex->GetPositionVariance().Z(),variance);
+        CUBE_LOG(0) << "Combine vertices "
                     << " T: " << bestVertex->GetConstituents()->size()
                     << " C: " << bestVertex->GetQuality()
                     << "/" << bestVertex->GetNDOF()
@@ -123,16 +126,10 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                     << " S: " << std::sqrt(variance)
                     << std::endl;
 
-        if (bestProb < fLikelihoodCut) {
-            CUBE_LOG(0) << "BuildPairwiseVertices:: Vertex rejected"
-                        << std::endl;
-            break;
-        }
-
         // Combine them and put it back onto the list.
         allVertices.erase(vtx1);
         allVertices.erase(vtx2);
-        allVertices.push_back(bestVertex);
+        allVertices.push_front(bestVertex);
     }
 
     std::copy(allVertices.begin(), allVertices.end(),
@@ -140,6 +137,9 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
 
     CUBE_LOG(0) << "BuildPairwiseVertices:: Total vertices saved "
                 << finalObjects->size() << std::endl;
+
+    std::sort(finalObjects->begin(), finalObjects->end(),
+              Cube::CompareReconObjects());
 
     result->AddObjectContainer(finalObjects);
 
@@ -163,6 +163,33 @@ double Cube::BuildPairwiseVertices::ClosestApproach(
     double mag = ABcrs.Mag();
     if (mag>0) return std::abs(ABcrs*(A-B)/mag);
     return 10000;
+}
+
+double Cube::BuildPairwiseVertices::ClosestApproach(
+    Cube::Handle<Cube::ReconTrack> track1,
+    Cube::Handle<Cube::ReconTrack> track2) {
+    double best = 1E+6;
+    double b = ClosestApproach(track1->GetFront()->GetPosition().Vect(),
+                               track1->GetFront()->GetDirection(),
+                               track2->GetFront()->GetPosition().Vect(),
+                               track2->GetFront()->GetDirection());
+    if (b < best) best = b;
+    b = ClosestApproach(track1->GetFront()->GetPosition().Vect(),
+                        track1->GetFront()->GetDirection(),
+                        track2->GetBack()->GetPosition().Vect(),
+                        track2->GetBack()->GetDirection());
+    if (b < best) best = b;
+    b = ClosestApproach(track1->GetBack()->GetPosition().Vect(),
+                        track1->GetBack()->GetDirection(),
+                        track2->GetFront()->GetPosition().Vect(),
+                        track2->GetFront()->GetDirection());
+    if (b < best) best = b;
+    b = ClosestApproach(track1->GetBack()->GetPosition().Vect(),
+                        track1->GetBack()->GetDirection(),
+                        track2->GetBack()->GetPosition().Vect(),
+                        track2->GetBack()->GetDirection());
+    if (b < best) best = b;
+    return best;
 }
 
 double Cube::BuildPairwiseVertices::TravelDistance(
@@ -202,18 +229,11 @@ Cube::BuildPairwiseVertices::CombineVertices(
     vtx->SetStatus(Cube::ReconObject::kSuccess|Cube::ReconObject::kRan);
     vtx->AddDetector(Cube::ReconObject::kDST);
 
-    double var1 = 0.0;
-    var1 += vertex1->GetPositionVariance().X()/3.0;
-    var1 += vertex1->GetPositionVariance().Y()/3.0;
-    var1 += vertex1->GetPositionVariance().Z()/3.0;
-
-    double var2 = 0.0;
-    var2 += vertex2->GetPositionVariance().X()/3.0;
-    var2 += vertex2->GetPositionVariance().Y()/3.0;
-    var2 += vertex2->GetPositionVariance().Z()/3.0;
 
     // Find the average position for the new vertex.  This will be the
     // starting position for the fit.
+    double var1 = vertex1->GetPositionVariance().Vect().Mag();
+    double var2 = vertex2->GetPositionVariance().Vect().Mag();
     TVector3 pos = (1.0/var1)*vertex1->GetPosition().Vect()
         + (1.0/var2)*vertex2->GetPosition().Vect();
     pos = pos*(1.0/(1.0/var1 + 1.0/var2));
@@ -239,6 +259,26 @@ Cube::BuildPairwiseVertices::CombineVertices(
         }
     }
 
+    // Check that all the track pairs stay within the maximum allowed
+    // approach.
+    for (std::set<Cube::Handle<Cube::ReconTrack>>::iterator t1 = tracks.begin();
+         t1 != tracks.end(); ++t1) {
+        for (std::set<Cube::Handle<Cube::ReconTrack>>::iterator t2
+                 = tracks.begin();
+             t2 != tracks.end(); ++t2) {
+            if (*t1 == *t2) continue;
+            double b = ClosestApproach(*t1,*t2);
+            if (b < 2.0*fMaxApproach) continue;
+            return Cube::Handle<Cube::ReconVertex>();
+        }
+    }
+
+    Cube::Handle<Cube::HitSelection>
+        vertexHits(new Cube::HitSelection("vertexHits"));
+    Cube::HitSelection::iterator h = std::unique(vertexHits->begin(),
+                                                 vertexHits->end());
+    vertexHits->erase(h,vertexHits->end());
+    vtx->SetHitSelection(vertexHits);
     double dof = 0;
     for (std::set<Cube::Handle<Cube::ReconTrack>>::iterator t = tracks.begin();
          t != tracks.end(); ++t) {
@@ -248,10 +288,18 @@ Cube::BuildPairwiseVertices::CombineVertices(
             throw std::runtime_error("Illegal object in vertex");
         }
         vtx->AddConstituent(*t);
+        std::copy((*t)->GetHitSelection()->begin(),
+                  (*t)->GetHitSelection()->end(),
+              std::back_inserter(*vertexHits));
         dof += 1.0;
     }
     dof = dof - 1.0;
     vtx->SetNDOF(dof);
+
+    Cube::HitSelection::iterator hEnd = std::unique(vertexHits->begin(),
+                                                    vertexHits->end());
+    vertexHits->erase(hEnd,vertexHits->end());
+    vtx->SetHitSelection(vertexHits);
 
     if (dof < 1) return Cube::Handle<Cube::ReconVertex>();
 
@@ -271,7 +319,7 @@ Cube::Handle<Cube::ReconVertex>
 Cube::BuildPairwiseVertices::MakePairVertex(
     Cube::Handle<Cube::ReconTrack> track1,
     Cube::Handle<Cube::ReconTrack> track2) {
-    double bestApproach = 100000;
+    double bestApproach = 10.0*unit::km;
     double bestDist1 = 0.0;
     double bestDist2 = 0.0;
     TLorentzVector bestPos1;
@@ -427,6 +475,19 @@ Cube::BuildPairwiseVertices::MakePairVertex(
 
     vtx->AddConstituent(track1);
     vtx->AddConstituent(track2);
+
+    Cube::Handle<Cube::HitSelection>
+        vertexHits(new Cube::HitSelection("vertexHits"));
+    std::copy(track1->GetHitSelection()->begin(),
+              track1->GetHitSelection()->end(),
+              std::back_inserter(*vertexHits));
+    std::copy(track2->GetHitSelection()->begin(),
+              track2->GetHitSelection()->end(),
+              std::back_inserter(*vertexHits));
+    Cube::HitSelection::iterator h = std::unique(vertexHits->begin(),
+                                                 vertexHits->end());
+    vertexHits->erase(h,vertexHits->end());
+    vtx->SetHitSelection(vertexHits);
 
     Cube::VertexFit vtxFit;
     vtx = vtxFit(vtx);

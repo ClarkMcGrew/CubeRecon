@@ -93,6 +93,10 @@ private:
     double ClosestApproach(const TVector3& A, const TVector3& Ad,
                            const TVector3& B, const TVector3& Bd);
 
+    // Find the closest approach between two tracks.
+    double ClosestApproach(Cube::Handle<Cube::ReconTrack> track1,
+                           Cube::Handle<Cube::ReconTrack> track2);
+
     // Find the travel distance from A along Ad to the point of closest
     // approach.
     double TravelDistance(const TVector3& A, const TVector3& Ad,
