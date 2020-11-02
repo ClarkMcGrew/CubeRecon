@@ -19,6 +19,9 @@ namespace Cube {
 
         std::vector<Cube::Handle<Cube::G4Hit>>
         ObjectG4Hits(Cube::Event& event, Cube::ReconObject& object);
+
+        std::vector<Cube::Handle<Cube::G4Hit>>
+        TrajectoryG4Hits(Cube::Event& event, int trackId);
     }
 }
 #endif

@@ -81,6 +81,22 @@ Cube::Tool::ObjectG4Hits(Cube::Event& event, Cube::ReconObject& object) {
     return result;
 }
 
+std::vector<Cube::Handle<Cube::G4Hit>>
+Cube::Tool::TrajectoryG4Hits(Cube::Event& event, int trackId) {
+    std::vector<Cube::Handle<Cube::G4Hit>> result;
+    for (Cube::Event::G4HitContainer::iterator g = event.G4Hits.begin();
+         g != event.G4Hits.end(); ++g) {
+        if (g->second->GetPrimaryId() != trackId) continue;
+        result.push_back(g->second);
+    }
+    std::sort(result.begin(), result.end());
+    std::vector<Cube::Handle<Cube::G4Hit>>::iterator end
+        = std::unique(result.begin(),result.end());
+    result.erase(end,result.end());
+
+    return result;
+}
+
 // Local Variables:
 // mode:c++
 // c-basic-offset:4
