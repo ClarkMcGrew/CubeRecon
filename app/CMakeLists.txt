@@ -43,3 +43,9 @@ add_executable(testTrackEff.exe testTrackEff.cxx)
 target_link_libraries(testTrackEff.exe LINK_PUBLIC
   cuberecon_io cuberecon_tools)
 install(TARGETS testTrackEff.exe RUNTIME DESTINATION bin)
+
+# Add a test program
+add_executable(testVertexResolution.exe testVertexResolution.cxx)
+target_link_libraries(testVertexResolution.exe LINK_PUBLIC
+  cuberecon_io cuberecon_tools)
+install(TARGETS testVertexResolution.exe RUNTIME DESTINATION bin)
