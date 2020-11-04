@@ -11,8 +11,8 @@
 #include <CubeReconCluster.hxx>
 
 #include <algorithm>
-#include <memory>
 #include <set>
+#include <memory>
 #include <cmath>
 
 namespace {
@@ -34,12 +34,11 @@ Cube::Hits3D::Hits3D()
 
 Cube::Hits3D::~Hits3D() { }
 
-// Sort the fiber times, and find the average time for hits in a narrow
-// window of time.  This works so that if one fiber is "out of time" for
-// this hit (usually because the first photon came from a different cube),
-// we still get the average for the fibers that are in coincidence.  If
-// none of the fibers are in coincidence, this returns the average of all
-// three fibers with a large uncertainty.
+// Sort the fiber times, and find the average time for hits in a narrow window
+// of time.  This works so that if one fiber is "out of time" for this hit
+// (usually because the first photon came from a different cube), we still get
+// the average for the fibers that are in coincidence.  If none of the fibers
+// are in coincidence, this returns time of the last fiber.
 std::pair<double,double> Cube::Hits3D::HitTime(FiberTQ& fiberTQ) const {
     // Intrinsic resolution for a hit.
     const double hitRes = 0.7*unit::ns;
@@ -71,9 +70,9 @@ std::pair<double,double> Cube::Hits3D::HitTime(FiberTQ& fiberTQ) const {
         double tHit = tSum/qSum;
         ttSum = ttSum/qSum;
         double tRMS = ttSum - tHit*tHit;
-        if (tRMS > 0.0) tRMS = std::sqrt(tRMS);
-        else tRMS = 0.0;
-        tRMS = std::max(tRMS,hitRes);
+        if (tRMS < 0.0) tRMS = 0.0;
+        tRMS = tRMS + hitRes*hitRes;
+        tRMS = std::sqrt(tRMS);
         return std::pair<double,double>(tHit,tRMS);
     }
 
