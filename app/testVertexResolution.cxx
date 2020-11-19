@@ -18,6 +18,7 @@
 #include <TH1F.h>
 #include <TH2F.h>
 #include <TProfile.h>
+#include <TPad.h>
 
 #include <iostream>
 #include <sstream>
@@ -36,6 +37,20 @@ TH1F* histTrackXResidual = NULL;
 TH1F* histTrackYResidual = NULL;
 TH1F* histTrackZResidual = NULL;
 TH1F* histTrackTResidual = NULL;
+TH1F* histTrackPerp = NULL;
+TH1F* histTrackLong = NULL;
+
+void PlotHistogram(TH1* hist) {
+    std::string name(hist->GetName());
+    std::cout << name + ".C" << std::endl;
+    std::cout << name + ".png" << std::endl;
+    std::cout << name + ".pdf" << std::endl;
+    hist->Draw();
+    gPad->Update();
+    gPad->Print((name + ".png").c_str());
+    gPad->Print((name + ".pdf").c_str());
+    gPad->Print((name + ".C").c_str());
+}
 
 /// Filter through tracks, and assign them to trajectories.  Then check the
 /// timing to see if it properly tags the track direction.
@@ -43,35 +58,73 @@ void AnalyzeEvent(Cube::Event& event) {
 
     if (!histInitialized) {
         histInitialized = true;
-        histVertexResolution = new TH1F("vertexResolution","Vertex Resolution",
+        histVertexResolution = new TH1F("vertexResolution",
+                                        "Vertex Resolution (multi-track)",
                                         50,0.0,50.0);
-        histVertexXResidual = new TH1F("vertexXResidual",
-                                       "Vertex residual on X axis",
-                                       100,-50.0,50.0);
-        histVertexYResidual = new TH1F("vertexYResidual",
-                                       "Vertex residual on Y axis",
-                                       100,-50.0,50.0);
-        histVertexZResidual = new TH1F("vertexZResidual",
-                                       "Vertex residual on Z axis",
-                                       100,-50.0,50.0);
-        histVertexTResidual = new TH1F("vertexTResidual",
-                                       "Vertex residual in time",
-                                       100,-10.0,10.0);
+        histVertexResolution->SetXTitle("Residual (mm)");
 
-        histTrackResolution = new TH1F("trackResolution","Track Resolution",
+        histVertexXResidual = new TH1F(
+            "vertexXResidual",
+            "Vertex Residual (multi-track) on X-Axis",
+            100,-50.0,50.0);
+        histVertexXResidual->SetXTitle("Residual (mm)");
+
+        histVertexYResidual = new TH1F(
+            "vertexYResidual",
+            "Vertex Residual (multi-track) on Y-Axis",
+            100,-50.0,50.0);
+        histVertexYResidual->SetXTitle("Residual (mm)");
+
+        histVertexZResidual = new TH1F(
+            "vertexZResidual",
+            "Vertex Residual (multi-track) on Z-Axis",
+            100,-50.0,50.0);
+        histVertexZResidual->SetXTitle("Residual (mm)");
+
+        histVertexTResidual = new TH1F(
+            "vertexTResidual",
+            "Vertex Residual (multi-track) in Time",
+            100,-10.0,10.0);
+        histVertexTResidual->SetXTitle("Residual (ns)");
+
+        histTrackResolution = new TH1F("trackResolution",
+                                       "Vertex Resolution (single-track)",
                                         50,0.0,50.0);
-        histTrackXResidual = new TH1F("trackXResidual",
-                                       "Track residual on X axis",
-                                       100,-50.0,50.0);
-        histTrackYResidual = new TH1F("trackYResidual",
-                                       "Track residual on Y axis",
-                                       100,-50.0,50.0);
-        histTrackZResidual = new TH1F("trackZResidual",
-                                       "Track residual on Z axis",
-                                       100,-50.0,50.0);
-        histTrackTResidual = new TH1F("trackTResidual",
-                                       "Track residual in time",
-                                       100,-10.0,10.0);
+        histTrackResolution->SetXTitle("Residual (mm)");
+
+        histTrackXResidual = new TH1F(
+            "trackXResidual",
+            "Vertex Residual (single-track) on X-Axis",
+            100,-50.0,50.0);
+        histTrackXResidual->SetXTitle("Residual (mm)");
+
+        histTrackYResidual = new TH1F(
+            "trackYResidual",
+            "Vertex Residual (single-track) on Y-Axis",
+            100,-50.0,50.0);
+        histTrackYResidual->SetXTitle("Residual (mm)");
+
+        histTrackZResidual = new TH1F(
+            "trackZResidual",
+            "Vertex Residual (single-track) on Z-Axis",
+            100,-50.0,50.0);
+        histTrackZResidual->SetXTitle("Residual (mm)");
+
+        histTrackTResidual = new TH1F(
+            "trackTResidual",
+            "Vertex Residual (single-track) in Time",
+            100,-10.0,10.0);
+        histTrackTResidual->SetXTitle("Residual (ns)");
+
+        histTrackPerp = new TH1F("trackPerpResolution",
+                                 "Vertex (single-track) Impact Parameter",
+                                 50,0.0,50.0);
+        histTrackPerp->SetXTitle("Residual (mm)");
+
+        histTrackLong = new TH1F("trackLongResolution",
+                                 "Vertex (single-track) Longitudinal Residual",
+                                 100,-50.0,50.0);
+        histTrackLong->SetXTitle("Residual (mm)");
     }
 
     // Find the primary vertex.
@@ -138,17 +191,30 @@ void AnalyzeEvent(Cube::Event& event) {
         double backDist =  (bestTrack->GetBack()->GetPosition().Vect()
                             -primaryVertex.Vect()).Mag();
         TLorentzVector offset;
+        double perp = 1E+6;
+        double para = 1E+6;
         if (frontDist < backDist) {
             offset = bestTrack->GetFront()->GetPosition() - primaryVertex;
+            para = offset.Vect()*bestTrack->GetFront()->GetDirection();
+            perp = (offset.Vect()
+                    - para*bestTrack->GetFront()->GetDirection()).Mag();
+            // Correct for the sense of the direction
+            para = -para;
         }
         else {
             offset = bestTrack->GetBack()->GetPosition() - primaryVertex;
+            para = offset.Vect()*bestTrack->GetBack()->GetDirection();
+            perp = (offset.Vect()
+                    - para*bestTrack->GetBack()->GetDirection()).Mag();
         }
         histTrackResolution->Fill(offset.Vect().Mag());
         histTrackXResidual->Fill(offset.X());
         histTrackYResidual->Fill(offset.Y());
         histTrackZResidual->Fill(offset.Z());
         histTrackTResidual->Fill(offset.T());
+        histTrackPerp->Fill(perp);
+        histTrackLong->Fill(para);
+
         return;
     }
 
@@ -248,6 +314,19 @@ int main(int argc, char** argv) {
              g != inputEvent->G4Hits.end(); ++g) {
         }
     }
+
+    PlotHistogram(histVertexResolution);
+    PlotHistogram(histVertexXResidual);
+    PlotHistogram(histVertexYResidual);
+    PlotHistogram(histVertexZResidual);
+    PlotHistogram(histVertexTResidual);
+    PlotHistogram(histTrackResolution);
+    PlotHistogram(histTrackXResidual);
+    PlotHistogram(histTrackYResidual);
+    PlotHistogram(histTrackZResidual);
+    PlotHistogram(histTrackTResidual);
+    PlotHistogram(histTrackPerp);
+    PlotHistogram(histTrackLong);
 
     if (outputFile) {
         outputFile->Write();
