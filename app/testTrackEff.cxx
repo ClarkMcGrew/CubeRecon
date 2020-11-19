@@ -27,10 +27,20 @@
 
 bool histInitialized = false;
 TH1F* histPrimMuonMomentum = NULL;
-TH1F* histRecoMuonMomentum = NULL;
-TH1F* histEffMuonMomentum = NULL;
+TH1F* histPrimMuonLength = NULL;
+TH1F* histPrimMuonDCos = NULL;
+TH2F* histPrimMuonMomDCos = NULL;
+TH2F* histPrimMuonMomLen = NULL;
 TH2F* histPrimMuonDir = NULL;
+TH1F* histRecoMuonMomentum = NULL;
+TH1F* histRecoMuonLength = NULL;
+TH1F* histRecoMuonDCos = NULL;
+TH2F* histRecoMuonMomDCos = NULL;
 TH2F* histRecoMuonDir = NULL;
+TH1F* histEffMuonMomentum = NULL;
+TH1F* histEffMuonLength = NULL;
+TH1F* histEffMuonDCos = NULL;
+TH2F* histEffMuonMomDCos = NULL;
 TH2F* histEffMuonDir = NULL;
 
 TH1F* histPrimProtonMomentum = NULL;
@@ -49,27 +59,63 @@ TH2F* histEffPionDir = NULL;
 
 /// Filter through tracks, and assign them to trajectories.  Then check the
 /// timing to see if it properly tags the track direction.
-void AnalyzeEvent(Cube::Event& event) {
+bool AnalyzeEvent(Cube::Event& event) {
 
     if (!histInitialized) {
         histInitialized = true;
         histPrimMuonMomentum = new TH1F("primMuonMomentum",
                                        "True Momentum of Muon",
                                        50,0.0,500.0);
-        histRecoMuonMomentum = new TH1F("recoMuonMomentum",
-                                        "True Momentum of Reconstructed Muon",
-                                        50,0.0,500.0);
-        histEffMuonMomentum = new TH1F("effMuonMomentum",
-                                        "Efficiency at True Muon Momentum",
-                                        50,0.0,500.0);
+        histPrimMuonLength = new TH1F("primMuonLength",
+                                      "True Length of Muon",
+                                      50,0.0,2000.0);
+        histPrimMuonDCos = new TH1F("primMuonDCos",
+                                    "Angle Relative to Closest Track (Muon)",
+                                    20,-1.0,1.0);
+        histPrimMuonMomLen = new TH2F("primMuonMomLen",
+                                      "True Length vs Momentum of Muon",
+                                      50,0.0,500.0,
+                                      50,0.0,2000.0);
+        histPrimMuonMomDCos = new TH2F("primMuonMomDCos",
+                                       "Angle to Neighbor vs Momentum of Muon",
+                                       10,0.0,500.0,
+                                       10,-1.0,1.0);
         histPrimMuonDir = new TH2F("primMuonDir",
                                    "True Cosine vs Momentum for Muons",
                                    10,0.0,500.0,
                                    10,0.0,1.0);
+
+        histRecoMuonMomentum = new TH1F("recoMuonMomentum",
+                                        "True Momentum of Reconstructed Muon",
+                                        50,0.0,500.0);
+        histRecoMuonLength = new TH1F("recoMuonLength",
+                                        "True Length of Reconstructed Muon",
+                                        50,0.0,2000.0);
+        histRecoMuonDCos = new TH1F("recoMuonDCos",
+                                    "Angle Relative to Closest Track (Muon)",
+                                    20,-1.0,1.0);
+        histRecoMuonMomDCos = new TH2F("recoMuonMomDCos",
+                                       "Angle to Neighbor vs Momentum of Muon",
+                                       10,0.0,500.0,
+                                       10,-1.0,1.0);
         histRecoMuonDir = new TH2F("recoMuonDir",
                                    "True Cosine vs Momentum for Reco Muons",
                                    10,0.0,500.0,
                                    10,0.0,1.0);
+
+        histEffMuonMomentum = new TH1F("effMuonMomentum",
+                                        "Efficiency at True Muon Momentum",
+                                        50,0.0,500.0);
+        histEffMuonLength = new TH1F("effMuonLength",
+                                        "Efficiency at True Muon Length",
+                                        50,0.0,2000.0);
+        histEffMuonDCos = new TH1F("effMuonDCos",
+                                    "Efficiency Relative to Neighbors (Muon)",
+                                    20,-1.0,1.0);
+        histEffMuonMomDCos = new TH2F("effMuonMomDCos",
+                                      "Eff. for Neighbor vs Momentum of Muon",
+                                      10,0.0,500.0,
+                                      10,-1.0,1.0);
         histEffMuonDir = new TH2F("effMuonDir",
                                   "Muon Efficiency for True Cosine vs Momentum",
                                    10,0.0,500.0,
@@ -119,9 +165,11 @@ void AnalyzeEvent(Cube::Event& event) {
                                   "Pi+ Efficiency for True Cosine vs Momentum",
                                    10,0.0,500.0,
                                    10,0.0,1.0);
-
     }
 
+    // Make sure that the tracks are in the "fiducial", and not going in
+    // opposite directions.
+    std::vector<TVector3> directions;
     Cube::Event::G4TrajectoryContainer& trajectories = event.G4Trajectories;
     for (Cube::Event::G4TrajectoryContainer::iterator tr = trajectories.begin();
          tr != trajectories.end(); ++tr) {
@@ -129,32 +177,66 @@ void AnalyzeEvent(Cube::Event& event) {
         if (tr->second->GetParentId() >= 0) continue;
         double fid= Cube::Tool::ContainedPoint(
             tr->second->GetInitialPosition().Vect());
+        if (fid < 50.0) return false;
+        directions.push_back(tr->second->GetInitialMomentum().Vect().Unit());
+    }
+
+    for (Cube::Event::G4TrajectoryContainer::iterator tr = trajectories.begin();
+         tr != trajectories.end(); ++tr) {
+        // only count primaries.
+        if (tr->second->GetParentId() >= 0) continue;
+        double fid= Cube::Tool::ContainedPoint(
+            tr->second->GetInitialPosition().Vect());
+        if (fid < 50.0) return false;
+        int trackId = tr->second->GetTrackId();
+        int pdgCode = std::abs(tr->second->GetPDGCode());
+        std::vector<Cube::Handle<Cube::G4Hit>> segments
+            = Cube::Tool::TrajectoryG4Hits(event,trackId);
+        TVector3 head = segments.front()->GetStart().Vect();
+        TVector3 tail = segments.back()->GetStop().Vect();
+        double len = (tail-head).Mag();
+        TVector3 dir = tr->second->GetInitialMomentum().Vect().Unit();
+        double mom = tr->second->GetInitialMomentum().P();
+        // Make sure the track is not back to back with another.
+        double dCos = 0.0;
+        for (std::vector<TVector3>::iterator d1 = directions.begin();
+             d1 != directions.end(); ++d1) {
+            double d = (*d1) * dir;
+            if (d > 0.999) continue;
+            if (std::abs(d) > std::abs(dCos)) dCos = d;
+        }
         int pdgMuon = 13;
-        if (tr->second->GetPDGCode() == pdgMuon && fid > 50.0) {
-            double mom = tr->second->GetInitialMomentum().P();
-            histPrimMuonMomentum->Fill(mom);
-            TVector3 dir = tr->second->GetInitialMomentum().Vect().Unit();
-            histPrimMuonDir->Fill(mom,std::abs(dir.Z()));
+        if (pdgCode == pdgMuon) {
+            if (dCos < 0.9 && dCos > -0.50) {
+                histPrimMuonLength->Fill(len);
+                histPrimMuonMomLen->Fill(mom,len);
+                histPrimMuonMomentum->Fill(mom);
+                histPrimMuonDir->Fill(mom,std::abs(dir.Z()));
+            }
+            histPrimMuonMomDCos->Fill(mom,dCos);
+            if (len > 50) {
+                histPrimMuonDCos->Fill(dCos);
+            }
         }
         int pdgProton = 2212;
-        if (tr->second->GetPDGCode() == pdgProton && fid > 50.0) {
-            double mom = tr->second->GetInitialMomentum().P();
-            histPrimProtonMomentum->Fill(mom);
-            TVector3 dir = tr->second->GetInitialMomentum().Vect().Unit();
-            histPrimProtonDir->Fill(mom,std::abs(dir.Z()));
+        if (pdgCode == pdgProton) {
+            if (dCos < 0.9 && dCos > -0.50) {
+                histPrimProtonMomentum->Fill(mom);
+                histPrimProtonDir->Fill(mom,std::abs(dir.Z()));
+            }
         }
         int pdgPion = 211;
-        if (tr->second->GetPDGCode() == pdgPion && fid > 50.0) {
-            double mom = tr->second->GetInitialMomentum().P();
-            histPrimPionMomentum->Fill(mom);
-            TVector3 dir = tr->second->GetInitialMomentum().Vect().Unit();
-            histPrimPionDir->Fill(mom,std::abs(dir.Z()));
+        if (pdgCode == pdgPion) {
+            if (dCos < 0.9 && dCos > -0.50) {
+                histPrimPionMomentum->Fill(mom);
+                histPrimPionDir->Fill(mom,std::abs(dir.Z()));
+            }
         }
     }
 
     Cube::Handle<Cube::ReconObjectContainer> objects
         = event.GetObjectContainer();
-    if (!objects) return;
+    if (!objects) return false;
 
     int pdgMuon = 13;
     int pdgProton = 2212;
@@ -171,28 +253,52 @@ void AnalyzeEvent(Cube::Event& event) {
         if (!traj) throw;
         double fid= Cube::Tool::ContainedPoint(
             traj->GetInitialPosition().Vect());
-        if (traj->GetPDGCode() == pdgMuon && fid > 50.0) {
-            double mom = traj->GetInitialMomentum().P();
-            histRecoMuonMomentum->Fill(mom);
-            TVector3 dir = traj->GetInitialMomentum().Vect().Unit();
-            histRecoMuonDir->Fill(mom,std::abs(dir.Z()));
+        int trackId = traj->GetTrackId();
+        int pdgCode = std::abs(traj->GetPDGCode());
+        std::vector<Cube::Handle<Cube::G4Hit>> segments
+            = Cube::Tool::TrajectoryG4Hits(event,trackId);
+        TVector3 head = segments.front()->GetStart().Vect();
+        TVector3 tail = segments.back()->GetStop().Vect();
+        double len = (tail-head).Mag();
+        TVector3 dir = traj->GetInitialMomentum().Vect().Unit();
+        double mom = traj->GetInitialMomentum().P();
+        // Make sure the track is not back to back with another.
+        double dCos = 0.0;
+        for (std::vector<TVector3>::iterator d1 = directions.begin();
+             d1 != directions.end(); ++d1) {
+            double d = (*d1) * dir;
+            if (d > 0.999) continue;
+            if (std::abs(d) > std::abs(dCos)) dCos = d;
+        }
+        if (pdgCode == pdgMuon) {
+            if (dCos < 0.9 && dCos > -0.50) {
+                histRecoMuonMomentum->Fill(mom);
+                histRecoMuonDir->Fill(mom,std::abs(dir.Z()));
+                histRecoMuonLength->Fill(len);
+            }
+            histRecoMuonMomDCos->Fill(mom,dCos);
+            if (len > 50) {
+                histRecoMuonDCos->Fill(dCos);
+            }
             pdgMuon = -1;
         }
-        if (traj->GetPDGCode() == pdgProton && fid > 50.0) {
-            double mom = traj->GetInitialMomentum().P();
-            histRecoProtonMomentum->Fill(mom);
-            TVector3 dir = traj->GetInitialMomentum().Vect().Unit();
-            histRecoProtonDir->Fill(mom,std::abs(dir.Z()));
+        if (pdgCode == pdgProton) {
+            if (dCos < 0.9 && dCos > -0.50) {
+                histRecoProtonMomentum->Fill(mom);
+                histRecoProtonDir->Fill(mom,std::abs(dir.Z()));
+            }
             pdgProton = -1;
         }
-        if (traj->GetPDGCode() == pdgPion && fid > 50.0) {
-            double mom = traj->GetInitialMomentum().P();
-            histRecoPionMomentum->Fill(mom);
-            TVector3 dir = traj->GetInitialMomentum().Vect().Unit();
-            histRecoPionDir->Fill(mom,std::abs(dir.Z()));
+        if (pdgCode == pdgPion) {
+            if (dCos < 0.9 && dCos > -0.50) {
+                histRecoPionMomentum->Fill(mom);
+                histRecoPionDir->Fill(mom,std::abs(dir.Z()));
+            }
             pdgPion = -1;
         }
     }
+
+    return false;
 }
 
 int main(int argc, char** argv) {
@@ -262,25 +368,32 @@ int main(int argc, char** argv) {
         std::cout << "Open Output File: " << outputName << std::endl;
         outputFile.reset(new TFile(outputName.c_str(),"recreate"));
     }
+    TTree *outputTree = new TTree("CubeEvents","Reconstructed Event");
+    static Cube::Event *outputEvent = inputEvent;
+    outputTree->Branch("Event",&outputEvent);
 
     // Loop through the events.
     int totalEntries = inputChain->GetEntries();
     totalEntries = std::min(totalEntries,firstEntry+maxEntries);
     for (int entry = firstEntry; entry < totalEntries; ++entry) {
         inputChain->GetEntry(entry);
+        outputEvent = inputEvent;
         std::cout << "Process event "
                   << entry
                   << "/" << inputEvent->GetRunId()
                   << "/" << inputEvent->GetEventId() << std::endl;
-        AnalyzeEvent(*inputEvent);
-        for (Cube::Event::G4HitContainer::iterator g
-                 = inputEvent->G4Hits.begin();
-             g != inputEvent->G4Hits.end(); ++g) {
-        }
+        bool save = AnalyzeEvent(*inputEvent);
+        if (save) outputTree->Fill();
     }
 
     histEffMuonMomentum->Divide(histRecoMuonMomentum,
                                 histPrimMuonMomentum,1.0,1.0,"B");
+    histEffMuonLength->Divide(histRecoMuonLength,
+                              histPrimMuonLength,1.0,1.0,"B");
+    histEffMuonDCos->Divide(histRecoMuonDCos,
+                            histPrimMuonDCos,1.0,1.0,"B");
+    histEffMuonMomDCos->Divide(histRecoMuonMomDCos,
+                            histPrimMuonMomDCos,1.0,1.0,"B");
     histEffMuonDir->Divide(histRecoMuonDir,
                            histPrimMuonDir,1.0,1.0,"B");
     histEffProtonMomentum->Divide(histRecoProtonMomentum,
