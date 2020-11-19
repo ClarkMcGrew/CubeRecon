@@ -9,8 +9,11 @@ namespace {
                           Cube::Handle<Cube::G4Hit>& rhs) {
         return (lhs->GetStart().T() < rhs->GetStart().T());
     }
-
 }
+
+// General comment: This code is pretty inefficient, because I've put
+// "clarity" over efficiency.  For instance, a lot of vectors are passed (or
+// returned) by value, and are sorted multiple times.
 
 std::vector<Cube::Handle<Cube::G4Hit>>
 Cube::Tool::HitG4Hits(Cube::Event& event, Cube::Handle<Cube::Hit> hit) {
@@ -51,7 +54,6 @@ Cube::Tool::HitG4Hits(Cube::Event& event, Cube::Handle<Cube::Hit> hit) {
         if (segYZ.find(*xy) == segYZ.end()) continue;
         result.push_back(*xy);
     }
-    std::sort(result.begin(), result.end(), G4HitTimeCompare);
     return result;
 
 }
@@ -68,6 +70,10 @@ Cube::Tool::SelectionG4Hits(Cube::Event& event, Cube::HitSelection& hits) {
     }
     std::vector<Cube::Handle<Cube::G4Hit>> result;
     std::copy(segSet.begin(), segSet.end(), std::back_inserter(result));
+    std::sort(result.begin(), result.end());
+    std::vector<Cube::Handle<Cube::G4Hit>>::iterator end
+        = std::unique(result.begin(),result.end());
+    result.erase(end,result.end());
     std::sort(result.begin(), result.end(), G4HitTimeCompare);
     return result;
 }
@@ -93,7 +99,7 @@ Cube::Tool::TrajectoryG4Hits(Cube::Event& event, int trackId) {
     std::vector<Cube::Handle<Cube::G4Hit>>::iterator end
         = std::unique(result.begin(),result.end());
     result.erase(end,result.end());
-
+    std::sort(result.begin(), result.end(), G4HitTimeCompare);
     return result;
 }
 
