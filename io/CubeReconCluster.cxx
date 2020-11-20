@@ -205,6 +205,7 @@ void Cube::ReconCluster::UpdateFromHits() {
     TMatrixTSym<double> stateCov(dim);
     // This counts the weight for each bin of the covariance.
     TMatrixTSym<double> weights(dim);
+    TMatrixTSym<double> weights2(dim);
     // This counts the number of degrees of freedom contributing to each bin.
     TMatrixTSym<double> dof(dim);
     for (Cube::HitSelection::const_iterator h = beg;
@@ -235,6 +236,7 @@ void Cube::ReconCluster::UpdateFromHits() {
                 double weight = 1.0/(sigs(row)*sigs(col));
                 stateCov(row,col) += weight*vals(row)*vals(col);
                 weights(row,col) += weight;
+                weights2(row,col) += weight*weight;
                 double degrees
                     = 4*rms(row)*rms(col)/(12*sigs(row)*sigs(col));
                 if (row == posT && col == posT) degrees = 1.0;
@@ -246,7 +248,9 @@ void Cube::ReconCluster::UpdateFromHits() {
     // Turn the "stateCov" variable into the RMS.
     for (int row = 0; row<dim; ++row) {
         for (int col = row; col<dim; ++col) {
-            if (weights(row,col)>0) stateCov(row,col) /= weights(row,col);
+            if (weights(row,col)>0) {
+                stateCov(row,col) /= weights(row,col);
+            }
             else stateCov(row,col) = 0.0;
             stateCov(col,row) = stateCov(row,col);
         }
@@ -256,13 +260,21 @@ void Cube::ReconCluster::UpdateFromHits() {
     // turning the value into an RMS.
     for (int row = 0; row<dim; ++row) {
         for (int col = row; col<dim; ++col) {
-            if (dof(row,col)>0.9) stateCov(row,col) /= std::sqrt(dof(row,col));
+            if (dof(row,col)>0.9) {
+#ifdef NEW_IMPLEMENTATION
+                double w = weights(row,col);
+                stateCov(row,col) *= w*w / (w*w - weights2(row,col));
+#else
+                stateCov(row,col) /= std::sqrt(dof(row,col));
+#endif
+            }
             else if (row==col) stateCov(row,col) = Cube::CorrValues::kFreeValue;
             else stateCov(row,col) = 0.0;
             stateCov(col,row) = stateCov(row,col);
         }
     }
 
+#ifndef NO_FINITE_SIZE_CORRECTION
     // Add the correction for finite size of the hits.
     TVectorT<double> hitWeights(dim);
     for (Cube::HitSelection::const_iterator h = beg;
@@ -284,6 +296,7 @@ void Cube::ReconCluster::UpdateFromHits() {
         if (hitWeights(idx)<1E-8) continue;
         stateCov(idx,idx) += 1.0/hitWeights(idx);
     }
+#endif
 
     // Fix the variance of the deposited energy.  This assumes it's Poisson
     // distributed.
