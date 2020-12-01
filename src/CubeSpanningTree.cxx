@@ -53,7 +53,7 @@ Cube::SpanningTree::SpanningTree()
     : Cube::Algorithm("SpanningTree") {
 
     fDistanceType = 0;
-    fOversizeCut = 2000;
+    fOversizeCut = 3000;
 
 }
 
