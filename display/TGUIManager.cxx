@@ -151,6 +151,15 @@ void Cube::TGUIManager::MakeControlTab() {
     hf->AddFrame(checkButton, layoutHints);
     fShowFitsButton = checkButton;
 
+    checkButton = new TGCheckButton(hf,"Skip reconstructed vertices.");
+    checkButton->SetToolTipText(
+        "Skip any vertices in the reconstructed objects.");
+    checkButton->SetTextJustify(36);
+    checkButton->SetMargins(0,0,0,0);
+    checkButton->SetWrapLength(-1);
+    hf->AddFrame(checkButton, layoutHints);
+    fSkipFitVerticesButton = checkButton;
+
     checkButton = new TGCheckButton(hf,"Skip reconstructed tracks.");
     checkButton->SetToolTipText(
         "Skip any tracks in the reconstructed objects.");

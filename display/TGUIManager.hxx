@@ -80,6 +80,9 @@ public:
     /// Get the check button selecting if reconstructed objects are shown.
     TGButton* GetShowFitsButton() {return fShowFitsButton;}
 
+    /// Get the check button selecting if reconstructed clusters are shown.
+    TGButton* GetSkipFitVerticesButton() {return fSkipFitVerticesButton;}
+
     /// Get the check button selecting if reconstructed tracks are shown.
     TGButton* GetSkipFitTracksButton() {return fSkipFitTracksButton;}
 
@@ -157,6 +160,7 @@ private:
     TGButton* fShowOtherHitsButton;
     TGButton* fShowFibersButton;
     TGButton* fShowFitsButton;
+    TGButton* fSkipFitVerticesButton;
     TGButton* fSkipFitTracksButton;
     TGButton* fSkipFitClustersButton;
     TGButton* fShowFitHitsButton;

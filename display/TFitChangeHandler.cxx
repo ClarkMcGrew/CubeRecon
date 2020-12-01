@@ -362,6 +362,11 @@ int Cube::TFitChangeHandler::ShowReconObjects(
     if (!objects) return index;
     for (Cube::ReconObjectContainer::reverse_iterator obj = objects->rbegin();
          obj != objects->rend(); ++obj) {
+        if (Cube::TEventDisplay::Get().GUI()
+            .GetSkipFitVerticesButton()->IsOn()) {
+            Cube::Handle<Cube::ReconVertex> vertex = *obj;
+            if (vertex) continue;
+        }
         if (Cube::TEventDisplay::Get().GUI().GetSkipFitTracksButton()->IsOn()) {
             Cube::Handle<Cube::ReconTrack> track = *obj;
             if (track) continue;
