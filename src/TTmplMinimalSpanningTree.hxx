@@ -211,6 +211,45 @@ public:
 
     typedef std::vector<TreeVertex> MinimalSpanningTree;
 
+private:
+    /// A class to hold the vertices that have not yet been assigned to the
+    /// minimal spanning tree.
+    struct CandidateVertex {
+        /// The object for this vertex
+        T Object;
+
+        /// The best candidate parent entry in the MinimalSpanningTree
+        int BestParent;
+
+        /// The weight to the best parent;
+        double BestEdge;
+
+        CandidateVertex(const T& obj)
+            : Object(obj), BestParent(-1), BestEdge(1E+308) {}
+
+    };
+
+    typedef std::list<CandidateVertex> VertexList;
+    typedef typename VertexList::iterator VertexIterator;
+
+    /// A class that calculates the distance between points.  The EdgeWeight
+    /// class must define (at least) an method equivalent to "double
+    /// operator() (T lhs, T rhs)".  Examples of possible operators are
+    /// \code
+    /// double operator() (T lhs, T rhs);
+    /// double operator() (const T& lhs, const T& rhs);
+    /// \endcode
+    EdgeWeight fEdgeWeight;
+
+    /// The internal tree that is constructed.  It is exposed to the user by
+    /// GetTree();
+    MinimalSpanningTree fTree;
+
+    // An internal field that tracks the vertices that still need to be
+    // attached.
+    VertexList fVertices;
+
+public:
     /// Reinitialize the class.  This clears all of the internal data
     /// structures.
     void Clear() {
@@ -226,17 +265,16 @@ public:
     template <typename InputIterator>
     void AddVertices(InputIterator begin, InputIterator end) {
         while (begin != end) {
-            fVertices.push_back(*begin);
+            AddVertex(*begin);
             ++begin;
         }
-        if (!fTree.empty()) fTree.clear();
     }
 
     /// Add a single vertex to be built into an MST.  This can be used in
     /// conjunction with the AddVertices method.  If the class contains an
     /// existing MST, it will be cleared.
     void AddVertex(const T& vertex) {
-        fVertices.push_back(vertex);
+        fVertices.push_back(CandidateVertex(vertex));
         if (!fTree.empty()) fTree.clear();
     }
 
@@ -266,13 +304,13 @@ public:
         // vertices that will be built into the tree.
         for (VertexIterator v = fVertices.begin();
              v != fVertices.end(); ++v) {
-            double edge = fEdgeWeight(rootVertex,*v);
+            double edge = fEdgeWeight(rootVertex,v->Object);
             if (minimumEdge < 0 || edge < minimumEdge) {
                 minimumEdge = edge;
                 closest = v;
             }
         }
-        tv.Object = *closest;
+        tv.Object = closest->Object;
         tv.Parent = -1;
         tv.VertexDepth = 0;
         tv.EdgeSum = 0.0;
@@ -280,26 +318,37 @@ public:
         fTree.push_back(tv);
         fVertices.erase(closest);
 
-        // Run the simplest version of Prim's algorithm.  This keeps adding
+        // Run a simple version of Prim's algorithm.  This keeps adding
         // verticies until there aren't any more.  Nota Bene: This is
-        // (probably) an O(n^3) implementation!
+        // (probably) an O(n^2) implementation!
         while (!fVertices.empty()) {
             std::size_t parent = 0;
             closest = fVertices.end();
-            minimumEdge = -1;
-            for (std::size_t t = 0; t<fTree.size(); ++t) {
-                for (VertexIterator v = fVertices.begin();
-                     v != fVertices.end(); ++v) {
-                    double edge = fEdgeWeight(fTree[t].Object, *v);
-                    if (minimumEdge < 0 || edge < minimumEdge) {
-                        minimumEdge = edge;
-                        closest = v;
-                        parent = t;
-                    }
+            double minimumEdge = -1;
+
+            // Update the best parents for the candidate vertices based on the
+            // last entry in the tree.  After the first iteration, the best
+            // parent and edge will point to the best parent before the last
+            // vertex was added to the tree.  Save the best parent and
+            // minimumEdge found.
+            for (VertexIterator v = fVertices.begin();
+                 v != fVertices.end(); ++v) {
+                double edge = fEdgeWeight(fTree.back().Object, v->Object);
+                if (edge < v->BestEdge) {
+                    v->BestEdge = edge;
+                    v->BestParent = fTree.size()-1;
+                }
+                if (minimumEdge < 0 || v->BestEdge < minimumEdge) {
+                    minimumEdge = v->BestEdge;
+                    parent = v->BestParent;
+                    closest = v;
                 }
             }
+
+            // Add the vertex to the tree, and then erase it from the vertex
+            // list.
             tv.Parent = parent;
-            tv.Object = *closest;
+            tv.Object = closest->Object;
             tv.VertexDepth = fTree[parent].VertexDepth + 1;
             tv.ParentEdge = minimumEdge;
             tv.EdgeSum = fTree[parent].EdgeSum + tv.ParentEdge;
@@ -314,27 +363,6 @@ public:
         return fTree;
     }
 
-private:
-
-    typedef std::list<T> VertexList;
-    typedef typename VertexList::iterator VertexIterator;
-
-    /// A class that calculates the distance between points.  The EdgeWeight
-    /// class must define (at least) an method equivalent to "double
-    /// operator() (T lhs, T rhs)".  Examples of possible operators are
-    /// \code
-    /// double operator() (T lhs, T rhs);
-    /// double operator() (const T& lhs, const T& rhs);
-    /// \endcode
-    EdgeWeight fEdgeWeight;
-
-    /// The internal tree that is constructed.  It is exposed to the user by
-    /// GetTree();
-    MinimalSpanningTree fTree;
-
-    // An internal field that tracks the vertices that still need to be
-    // attached.
-    VertexList fVertices;
 };
 #endif
 
