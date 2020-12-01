@@ -281,8 +281,8 @@ public:
         fVertices.erase(closest);
 
         // Run the simplest version of Prim's algorithm.  This keeps adding
-        // verticies until there aren't any more.  Nota Bene: This is an n^2
-        // implementation!
+        // verticies until there aren't any more.  Nota Bene: This is
+        // (probably) an O(n^3) implementation!
         while (!fVertices.empty()) {
             std::size_t parent = 0;
             closest = fVertices.end();
