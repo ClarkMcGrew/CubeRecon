@@ -31,6 +31,13 @@ Cube::GrowClusters::GrowClusters()
 
 }
 
+namespace {
+    bool clusterSize(const Cube::Handle<Cube::ReconCluster>& lhs,
+                     const Cube::Handle<Cube::ReconCluster>& rhs) {
+        return lhs->GetHitSelection()->size() > rhs->GetHitSelection()->size();
+    }
+}
+
 Cube::Handle<Cube::AlgorithmResult>
 Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
                      const Cube::AlgorithmResult&,
@@ -74,6 +81,13 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
         clusterList.push_back((*o));
     }
 
+    clusterList.sort(clusterSize);
+    double clusterSizeCut = std::log(clusterList.size()+1.0)/2.3;
+
+    CUBE_LOG(0) << "Grow tracks from " << clusterList.size() << " clusters"
+                << " w/ minimum seed size of " << clusterSizeCut
+                << std::endl;
+
     // A set of hits that are already interior to a track.
     std::set<Cube::Handle<Cube::Hit>> interiorHits;
 
@@ -89,10 +103,9 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
         ClusterPair bestPair
             = std::make_pair(clusterList.end(), clusterList.end());
         double bestMatch = -1.0;
-        CUBE_LOG(0) << "Iteration: " << ++iterations
-                    << " " << clusterList.size() << std::endl;
         for (ClusterList::iterator c1 = clusterList.begin();
              c1 != clusterList.end(); ++c1) {
+            if ((*c1)->GetHitSelection()->size() < clusterSizeCut) break;
             double c1PerHit
                 = (*c1)->GetEDeposit() / (*c1)->GetHitSelection()->size();
             if (c1PerHit < fChargePerHitThreshold) continue;
@@ -209,6 +222,11 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
                 }
             }
         }
+
+        CUBE_LOG(3) << "Iteration: " << ++iterations
+                    << " " << clusterList.size()
+                    << " " << growingClusters
+                    << std::endl;
 
         // Check if we found any clusters to grow and stop if we don't.
         if (growingClusters<1) break;
