@@ -15,7 +15,7 @@
 #include <iomanip>
 
 Cube::Recon::Recon(): Cube::Algorithm("CubeRecon") {
-    fOversizeCut = 7500;
+    fOversizeCut = 10000;
 }
 
 Cube::Handle<Cube::AlgorithmResult>
@@ -68,6 +68,9 @@ Cube::Recon::Process(const Cube::AlgorithmResult& input,
 
         // Protect against really large time slices.
         if (hits->size() > fOversizeCut) {
+            CUBE_ERROR << "Skip oversize slice with "
+                       << hits->size() << " hits"
+                       << std::endl;
             Cube::Handle<Cube::ReconCluster> cluster
                 = Cube::CreateCluster("cubeReconLarge",
                                       hits->begin(), hits->end());
