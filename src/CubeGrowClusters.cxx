@@ -78,6 +78,7 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
     std::set<Cube::Handle<Cube::Hit>> interiorHits;
 
     // Iterate over the clusters until we stop growing any clusters.
+    Cube::HitSelection combinedHits;
     typedef std::pair<ClusterList::iterator,ClusterList::iterator> ClusterPair;
     int growingClusters = 0;
     int iterations = 0;
@@ -106,7 +107,6 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
 
                 // If we get here, the clusters could plausibly be joined.
                 // Check if it's a good idea.
-                Cube::HitSelection combinedHits;
                 Cube::HitSelection::iterator sharedHit
                     = Cube::CombineNeighbors((*c1)->GetHitSelection()->begin(),
                                              (*c1)->GetHitSelection()->end(),
