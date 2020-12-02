@@ -279,6 +279,7 @@ private:
     /// double operator() (const T& lhs, const T& rhs);
     /// \endcode
     MetricModel fMetricModel;
+    int fMetricModelCalls;
 
     /// An internal vector of clusters used to cache results.
     std::vector<Points> fClusters;
@@ -321,6 +322,7 @@ void TTmplDensityCluster<T, MetricModel>::Cluster(InputIterator begin,
     // Clear out the  internal data structures.
     fClusters.clear();
     fRemainingPoints.clear();
+    fMetricModelCalls = 0;
 
     // Move the input points into the fRemainingPoints and the sort them so
     // they are in a defined order.
@@ -359,6 +361,7 @@ void TTmplDensityCluster<T, MetricModel>::Cluster(InputIterator begin,
 
     std::sort(fClusters.begin(), fClusters.end(),
               decreasingClusterSize<Points>());
+
 }
 
 template <typename T, typename MetricModel>
@@ -390,10 +393,10 @@ void TTmplDensityCluster<T, MetricModel>::FindSeeds(
             ++seedsFound;       // Count the number of "largest" seeds found.
             out = seeds;        // Copy the points in the seed to output
             out.push_back(*h);  // Add the starting hit to the output.
-            if (seedsFound > 5 && i > 3*fMinPoints) break;
+            if (seedsFound > 0 && i > fMinPoints) break;
         }
     }
-    // This returns with the best seed found.
+    // This returns with the first seed found.
 }
 
 template <typename T, typename MetricModel>
@@ -404,6 +407,7 @@ TTmplDensityCluster<T, MetricModel>::GetNeighbors(
     for (ConstIterator h = in.begin(); h != in.end(); ++h) {
         if (pnt == (*h)) continue;
         double distance = fMetricModel(pnt, *h);
+        ++fMetricModelCalls;
         if (distance < fMaxDist) {
             out.push_back(*h);
             ++size;
@@ -420,6 +424,7 @@ TTmplDensityCluster<T, MetricModel>::CountNeighbors(T pnt, const Points& in) {
     for (ConstIterator h = in.begin(); h != in.end(); ++h) {
         if (pnt == (*h)) continue;
         double distance = fMetricModel(pnt, *h);
+        ++fMetricModelCalls;
         if (distance < fMaxDist) {
             ++size;
         }
