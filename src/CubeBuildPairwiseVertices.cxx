@@ -30,7 +30,7 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                              const Cube::AlgorithmResult&,
                              const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "BuildPairwiseVertices:: Process "
+    CUBE_LOG(0) << "Process Cube::BuildPairwiseVertices "
                 << GetName() <<  std::endl;
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
     Cube::Handle<Cube::ReconObjectContainer> inputObjects

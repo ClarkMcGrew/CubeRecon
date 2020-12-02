@@ -35,6 +35,8 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
                      const Cube::AlgorithmResult&,
                      const Cube::AlgorithmResult&) {
+    CUBE_LOG(0) << "Process Cube::GrowClusters" << std::endl;
+
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
 
     // Create the result for this algorithm.
@@ -78,6 +80,7 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
     // Iterate over the clusters until we stop growing any clusters.
     typedef std::pair<ClusterList::iterator,ClusterList::iterator> ClusterPair;
     int growingClusters = 0;
+    int iterations = 0;
     do {
         growingClusters = 0;
         // Save the best matching pair of clusters based on a heuristic for
@@ -85,13 +88,17 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
         ClusterPair bestPair
             = std::make_pair(clusterList.end(), clusterList.end());
         double bestMatch = -1.0;
+        CUBE_LOG(0) << "Iteration: " << ++iterations
+                    << " " << clusterList.size() << std::endl;
         for (ClusterList::iterator c1 = clusterList.begin();
              c1 != clusterList.end(); ++c1) {
-            double c1PerHit = (*c1)->GetEDeposit() / (*c1)->GetHitSelection()->size();
+            double c1PerHit
+                = (*c1)->GetEDeposit() / (*c1)->GetHitSelection()->size();
             if (c1PerHit < fChargePerHitThreshold) continue;
             for (ClusterList::iterator c2 = std::next(c1);
                  c2 != clusterList.end(); ++c2) {
-                double c2PerHit = (*c2)->GetEDeposit()/(*c2)->GetHitSelection()->size();
+                double c2PerHit
+                    = (*c2)->GetEDeposit()/(*c2)->GetHitSelection()->size();
                 if (c2PerHit < fChargePerHitThreshold) continue;
 
                 // Are the two iterators for clusters that are neighbors?
@@ -102,10 +109,10 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
                 Cube::HitSelection combinedHits;
                 Cube::HitSelection::iterator sharedHit
                     = Cube::CombineNeighbors((*c1)->GetHitSelection()->begin(),
-                                                (*c1)->GetHitSelection()->end(),
-                                                (*c2)->GetHitSelection()->begin(),
-                                                (*c2)->GetHitSelection()->end(),
-                                                combinedHits);
+                                             (*c1)->GetHitSelection()->end(),
+                                             (*c2)->GetHitSelection()->begin(),
+                                             (*c2)->GetHitSelection()->end(),
+                                             combinedHits);
 
                 // Check to see if the shared hit is already an interior hit.
                 if (interiorHits.find(*sharedHit) != interiorHits.end()) {
@@ -262,8 +269,8 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
         }
         Cube::Handle<Cube::ReconTrack> track
             = Cube::CreateTrackFromHits("growClusters",
-                                           (*c1)->GetHitSelection()->begin(),
-                                           (*c1)->GetHitSelection()->end());
+                                        (*c1)->GetHitSelection()->begin(),
+                                        (*c1)->GetHitSelection()->end());
         track = fitter(track);
         finalObjects->push_back(track);
     }

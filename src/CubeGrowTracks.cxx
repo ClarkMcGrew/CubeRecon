@@ -245,7 +245,7 @@ Cube::GrowTracks::Process(const Cube::AlgorithmResult& input,
     Cube::Handle<Cube::ReconObjectContainer> inputObjects
         = input.GetObjectContainer();
 
-    CUBE_LOG(0) << "Cube::GrowTracks Process" << std::endl;
+    CUBE_LOG(0) << "Process Cube::GrowTracks" << std::endl;
 
     if (!inputObjects || !inputHits) {
         CUBE_ERROR << "No input objects or hits" << std::endl;

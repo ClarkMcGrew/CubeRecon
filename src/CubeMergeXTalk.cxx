@@ -42,7 +42,7 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
                           const Cube::AlgorithmResult&,
                           const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "Process MergeXTalk" << std::endl;
+    CUBE_LOG(0) << "Process Cube::MergeXTalk" << std::endl;
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
     Cube::Handle<Cube::ReconObjectContainer> inputObjects
         = input.GetObjectContainer();
