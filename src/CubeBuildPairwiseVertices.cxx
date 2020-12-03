@@ -20,6 +20,7 @@ Cube::BuildPairwiseVertices::BuildPairwiseVertices(const char* name)
     fLikelihoodCut = 0.05;
     fMaxOverlap = 10.0*unit::mm;
     fMaxDistance = 50.0*unit::cm;
+    fActualMaxDistance = fMaxDistance;
     fMaxApproach = 40.0*unit::mm;
     fMinTrackLength = 5.0*unit::cm;
 }
@@ -49,15 +50,46 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
     // Collect all of the tracks that can be used to build the vertices, and
     // copy all the objects to the output.
     Cube::ReconObjectContainer allTracks;
+    std::vector<double> lengths;
     for (Cube::ReconObjectContainer::iterator t = inputObjects->begin();
          t != inputObjects->end(); ++t) {
         Cube::Handle<Cube::ReconTrack> track = *t;
         if (!track) continue;
+        double len = TrackLength(track);
+        if (len < fMinTrackLength) continue;
+        lengths.push_back(len);
         allTracks.push_back(track);
     }
 
-    CUBE_ERROR << "BuildPairwiseVertices:: Have tracks "
-               << allTracks.size()<< std::endl;
+    // Determine the minimum length for a track to be used as a seed in a
+    // vertex.  At least one track attached to a vertex must be longer than
+    // fRequiredTrackLength.
+    std::sort(lengths.begin(),lengths.end());
+    int trackCountLimit = 10;       // Should be a parameter
+    double trackPercentile = 0.25;  // Should be a parameter
+    double trackMaxRequiredLength = 25*unit::cm;
+    if (lengths.size() < trackCountLimit) {
+        fRequiredTrackLength = fMinTrackLength;
+    }
+    else {
+        int percentile = trackPercentile*lengths.size();
+        if (percentile < trackCountLimit) percentile = trackCountLimit;
+        fRequiredTrackLength = lengths[lengths.size()-percentile];
+        fRequiredTrackLength = std::max(fRequiredTrackLength,
+                                        trackMaxRequiredLength);
+    }
+
+    CUBE_ERROR << "BuildPairwiseVertices:: Possible tracks "
+               << allTracks.size()
+               << " with required length " << fRequiredTrackLength
+               << std::endl;
+
+    fActualMaxDistance = fMaxDistance;
+    if (allTracks.size() > 20) {
+        double r = allTracks.size() - 20;
+        fActualMaxDistance /= std::sqrt(r+1.0);
+        fActualMaxDistance = std::max(5*unit::cm,fActualMaxDistance);
+    }
 
     // Build all of the plausible vertices.
     std::list<Cube::Handle<Cube::ReconVertex>> allVertices;
@@ -88,12 +120,11 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
         for (std::list<Cube::Handle<Cube::ReconVertex>>::iterator v1
                  = allVertices.begin();
              v1 != allVertices.end(); ++v1) {
-            for (std::list<Cube::Handle<Cube::ReconVertex>>::iterator v2=v1;
+            for (std::list<Cube::Handle<Cube::ReconVertex>>::iterator v2
+                     = std::next(v1);
                  v2 != allVertices.end(); ++v2) {
-                if (v1 == v2) continue;
                 double d = ((*v1)->GetPosition().Vect()
                             - (*v2)->GetPosition().Vect()).Mag();
-                // if (d > fMaxApproach) continue;
                 Cube::Handle<Cube::ReconVertex> checkVertex
                     = CombineVertices(*v1,*v2);
                 if (!checkVertex) continue;
@@ -229,7 +260,6 @@ Cube::BuildPairwiseVertices::CombineVertices(
     vtx->SetStatus(Cube::ReconObject::kSuccess|Cube::ReconObject::kRan);
     vtx->AddDetector(Cube::ReconObject::kDST);
 
-
     // Find the average position for the new vertex.  This will be the
     // starting position for the fit.
     double var1 = vertex1->GetPositionVariance().Vect().Mag();
@@ -264,7 +294,7 @@ Cube::BuildPairwiseVertices::CombineVertices(
     for (std::set<Cube::Handle<Cube::ReconTrack>>::iterator t1 = tracks.begin();
          t1 != tracks.end(); ++t1) {
         for (std::set<Cube::Handle<Cube::ReconTrack>>::iterator t2
-                 = tracks.begin();
+                 = std::next(t1);
              t2 != tracks.end(); ++t2) {
             if (*t1 == *t2) continue;
             double b = ClosestApproach(*t1,*t2);
@@ -307,6 +337,7 @@ Cube::BuildPairwiseVertices::CombineVertices(
     vtx = vtxFit(vtx);
 
     if (!vtx) return Cube::Handle<Cube::ReconVertex>();
+
     // Protect against crazy vertices
     if (vtx->GetPositionVariance().Vect().Mag() > fMaxApproach*fMaxApproach) {
         return Cube::Handle<Cube::ReconVertex>();
@@ -429,10 +460,10 @@ Cube::BuildPairwiseVertices::MakePairVertex(
 
     // Check if this is a decent vertex pair.
     if (bestApproach > fMaxApproach) return Cube::Handle<Cube::ReconVertex>();
-    if (std::abs(bestDist1) > fMaxDistance) {
+    if (std::abs(bestDist1) > fActualMaxDistance) {
         return Cube::Handle<Cube::ReconVertex>();
     }
-    if (std::abs(bestDist2) > fMaxDistance) {
+    if (std::abs(bestDist2) > fActualMaxDistance) {
         return Cube::Handle<Cube::ReconVertex>();
     }
 
@@ -459,6 +490,10 @@ Cube::BuildPairwiseVertices::MakePairVertex(
     t2Var += bestDist2*bestDist2*t2DirVar.X();
     t2Var += bestDist2*bestDist2*t2DirVar.Y();
     t2Var += bestDist2*bestDist2*t2DirVar.Z();
+
+    if (t1Len < fRequiredTrackLength && t2Len < fRequiredTrackLength) {
+        return Cube::Handle<Cube::ReconVertex>();
+    }
 
     TLorentzVector bestVertex = PairVertex(bestPos1,bestDir1,t1Var,
                                            bestPos2,bestDir2,t2Var);

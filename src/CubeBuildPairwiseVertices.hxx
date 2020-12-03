@@ -46,7 +46,9 @@ public:
 
     /// Set the allowed distance from the track to the vertex.  The vertex
     /// must be within this distance of one end of a track (A typical value is
-    /// 100 mm).
+    /// 100 mm).  This value will be adjusted internally to be
+    /// fActualMaxDistance based on the number of tracks in the event (this
+    /// prevents huge events from "exploding").
     void SetDistance(double v) {fMaxDistance = v;}
 
     /// Set the maximum allowed approach distance to be considered for a
@@ -57,6 +59,10 @@ public:
     /// shorter than this should be added to identified vertices (by a
     /// different algorithm), but not used to select a vertex.
     void SetMinTrackLength(double v) {fMinTrackLength = v;}
+
+    /// Set the required track length to be considered for a vertex.  At least
+    /// one track in the vertex must be longer than this.
+    void SetRequiredTrackLength(double v) {fRequiredTrackLength = v;}
 
 private:
 
@@ -76,13 +82,22 @@ private:
     // intersection point.
     double fMaxDistance;
 
+    // The actual maximum allowed distance between the track and the vertex.
+    // The value is based off of fMaxDistance, but is adjusted for big events
+    // and other special cases where the algorithm might explode.
+    double fActualMaxDistance;
+
     // The maximum allowed approach distance.  Tracks must pass within this
     // distance of each other to be formed into a vertex.  This is not
     // enforced when vertices are combined.
     double fMaxApproach;
 
-    // The minimum track length for adding to a vertex.
+    // The minimum track length to be in a vertex.
     double fMinTrackLength;
+
+    // At least one track in a vertex must be longer than the required track
+    // length.
+    double fRequiredTrackLength;
 
     // Find a rough estimate of the track length.  This is the distance
     // between the front and back positions.
