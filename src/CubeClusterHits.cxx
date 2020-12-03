@@ -44,7 +44,7 @@ Cube::ClusterHits::Process(const Cube::AlgorithmResult& input,
                            const Cube::AlgorithmResult&,
                            const Cube::AlgorithmResult&) {
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
-    CUBE_LOG(0) << "Process ClusterHits" << std::endl;
+    CUBE_LOG(0) << "Process Cube::ClusterHits" << std::endl;
 
     // Create the result for this algorithm.
     Cube::Handle<Cube::AlgorithmResult> result = CreateResult();
