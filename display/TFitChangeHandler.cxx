@@ -10,6 +10,7 @@
 #include <CubeHandle.hxx>
 #include <CubeReconNode.hxx>
 #include <CubeLog.hxx>
+#include <CubeUnits.hxx>
 
 #include <TUnitsTable.hxx>
 
@@ -245,7 +246,6 @@ int Cube::TFitChangeHandler::ShowReconVertex(
 
     std::stringstream title;
 
-    ++index;
     TLorentzVector pos = state->GetPosition();
     TLorentzVector var = state->GetPositionVariance();
     double uncertainty = var.X();
@@ -254,6 +254,20 @@ int Cube::TFitChangeHandler::ShowReconVertex(
     if (uncertainty > 0) uncertainty = std::sqrt(uncertainty);
     uncertainty = std::max(5.0*unit::mm,uncertainty);
 
+    // Add sanity checks before drawing.
+    if (std::abs(pos.X()) > 10*unit::meter
+        || std::abs(pos.Y()) > 10*unit::meter
+        || std::abs(pos.Z()) > 10*unit::meter
+        || uncertainty > 10*unit::meter) {
+        std::cout << "BAD VERTEX(" << obj->GetUniqueID() << "): "
+                  << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
+                  <<", "<<unit::AsString(pos.Y(),std::sqrt(var.Y()),"length")
+                  <<", "<<unit::AsString(pos.Z(),std::sqrt(var.Z()),"length")
+                  << std::endl;
+        return index;
+    }
+
+    ++index;
     TEveGeoShape *vtxShape = new TEveGeoShape("vertex");
     vtxShape->SetName("vertex");
     vtxShape->SetTitle("A Vertex");
@@ -274,14 +288,18 @@ int Cube::TFitChangeHandler::ShowReconVertex(
           << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
           <<", "<<unit::AsString(pos.Y(),std::sqrt(var.Y()),"length")
           <<", "<<unit::AsString(pos.Z(),std::sqrt(var.Z()),"length");
+    if (obj->GetHitSelection() || obj->GetConstituents()) {
+        title << "    " << std::endl;
+    }
+
     if (obj->GetHitSelection()) {
-        title <<", H: "<< obj->GetHitSelection()->size();
+        title <<" H: "<< obj->GetHitSelection()->size();
     }
 
     Cube::Handle<Cube::ReconObjectContainer>
         constituents = obj->GetConstituents();
     if (constituents) {
-        title << std::endl << "    N: " << constituents->size() << " -- ";
+        title << " N: " << constituents->size() << " -- ";
         for (Cube::ReconObjectContainer::iterator o = constituents->begin();
              o != constituents->end(); ++o) {
             Cube::Handle<Cube::ReconTrack> trk = *o;
@@ -367,14 +385,25 @@ int Cube::TFitChangeHandler::ShowReconObjects(
             Cube::Handle<Cube::ReconVertex> vertex = *obj;
             if (vertex) continue;
         }
-        if (Cube::TEventDisplay::Get().GUI().GetSkipFitTracksButton()->IsOn()) {
-            Cube::Handle<Cube::ReconTrack> track = *obj;
-            if (track) continue;
-        }
+        // if (Cube::TEventDisplay::Get().GUI().GetSkipFitTracksButton()->IsOn()) {
+        //     Cube::Handle<Cube::ReconTrack> track = *obj;
+        //     if (track) continue;
+        // }
         if (Cube::TEventDisplay::Get().GUI()
             .GetSkipFitClustersButton()->IsOn()) {
             Cube::Handle<Cube::ReconCluster> cluster = *obj;
             if (cluster) continue;
+        }
+        int trackNodes = Cube::TEventDisplay::Get().GUI().
+            GetSkipFitTrackNodes()->GetNumber();
+        Cube::Handle<Cube::ReconTrack> track = *obj;
+        if (track) {
+            if (! Cube::TEventDisplay::Get().GUI()
+                .GetSkipFitTracksButton()->IsOn()
+                && track->GetNodes().size() < trackNodes) continue;
+            if (Cube::TEventDisplay::Get().GUI()
+                .GetSkipFitTracksButton()->IsOn()
+                && track->GetNodes().size() >= trackNodes) continue;
         }
         index = ShowReconObject(list,*obj, index, false);
         if (fShowFitsHits) {

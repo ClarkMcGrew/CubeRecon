@@ -86,6 +86,9 @@ public:
     /// Get the check button selecting if reconstructed tracks are shown.
     TGButton* GetSkipFitTracksButton() {return fSkipFitTracksButton;}
 
+    // Get specific event
+    TGNumberEntry* GetSkipFitTrackNodes() {return fSkipFitTrackNodes;}
+
     /// Get the check button selecting if reconstructed clusters are shown.
     TGButton* GetSkipFitClustersButton() {return fSkipFitClustersButton;}
 
@@ -162,6 +165,7 @@ private:
     TGButton* fShowFitsButton;
     TGButton* fSkipFitVerticesButton;
     TGButton* fSkipFitTracksButton;
+    TGNumberEntry* fSkipFitTrackNodes;
     TGButton* fSkipFitClustersButton;
     TGButton* fShowFitHitsButton;
     TGButton* fShowFitEndsButton;

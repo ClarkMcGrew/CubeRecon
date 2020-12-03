@@ -61,15 +61,15 @@ void Cube::TGUIManager::MakeControlTab() {
     hf->AddFrame(textButton, layoutHints);
     fNextEventButton = textButton;
 
-    TGGroupFrame *fGframe = new TGGroupFrame(hf, "Event Number");
+    TGGroupFrame *groupFrame = new TGGroupFrame(hf, "Event Number");
     fInputEvent = new TGNumberEntry(
-        fGframe, 0, 9,999,
+        groupFrame, 0, 9,999,
         TGNumberFormat::kNESInteger,
         TGNumberFormat::kNEANonNegative,
         TGNumberFormat::kNELLimitMinMax,
         0, 99999);
-    fGframe->AddFrame(fInputEvent,layoutHints);
-    hf->AddFrame(fGframe, layoutHints);
+    groupFrame->AddFrame(fInputEvent,layoutHints);
+    hf->AddFrame(groupFrame, layoutHints);
 
     /////////////////////
     // Buttons to control how truth objects are drawn.
@@ -160,15 +160,6 @@ void Cube::TGUIManager::MakeControlTab() {
     hf->AddFrame(checkButton, layoutHints);
     fSkipFitVerticesButton = checkButton;
 
-    checkButton = new TGCheckButton(hf,"Skip reconstructed tracks.");
-    checkButton->SetToolTipText(
-        "Skip any tracks in the reconstructed objects.");
-    checkButton->SetTextJustify(36);
-    checkButton->SetMargins(0,0,0,0);
-    checkButton->SetWrapLength(-1);
-    hf->AddFrame(checkButton, layoutHints);
-    fSkipFitTracksButton = checkButton;
-
     checkButton = new TGCheckButton(hf,"Skip reconstructed clusters.");
     checkButton->SetToolTipText(
         "Skip any clusters in the reconstructed objects.");
@@ -177,6 +168,25 @@ void Cube::TGUIManager::MakeControlTab() {
     checkButton->SetWrapLength(-1);
     hf->AddFrame(checkButton, layoutHints);
     fSkipFitClustersButton = checkButton;
+
+    checkButton = new TGCheckButton(hf,"Skip long reconstructed tracks.");
+    checkButton->SetToolTipText(
+        "Skip any long tracks in the reconstructed objects.");
+    checkButton->SetTextJustify(36);
+    checkButton->SetMargins(0,0,0,0);
+    checkButton->SetWrapLength(-1);
+    hf->AddFrame(checkButton, layoutHints);
+    fSkipFitTracksButton = checkButton;
+
+    groupFrame = new TGGroupFrame(hf, "Nodes in Long Track");
+    fSkipFitTrackNodes = new TGNumberEntry(
+        groupFrame, 0, 9,999,
+        TGNumberFormat::kNESInteger,
+        TGNumberFormat::kNEANonNegative,
+        TGNumberFormat::kNELLimitMinMax,
+        0, 100);
+    groupFrame->AddFrame(fSkipFitTrackNodes,layoutHints);
+    hf->AddFrame(groupFrame, layoutHints);
 
     checkButton = new TGCheckButton(hf,"Show reconstruction object hits");
     checkButton->SetToolTipText(
