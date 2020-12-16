@@ -33,7 +33,7 @@ int Cube::Tool::MainTrajectory(Cube::Event& event,
 // Find the trajectory that contributed most to the track.  The longest
 // trajectory wins.
 double Cube::Tool::MainPurity(Cube::Event& event,
-                                        Cube::ReconObject& object) {
+                              Cube::ReconObject& object) {
     std::vector<Cube::Handle<Cube::G4Hit>> g4Hits
         = Cube::Tool::ObjectG4Hits(event,object);
     std::map<int,double> trajMap;
@@ -52,7 +52,33 @@ double Cube::Tool::MainPurity(Cube::Event& event,
         maxTraj = t->first;
         maxLen = t->second;
     }
+    if (maxTraj < 0) return 0.0;
     return maxLen/totalLen;
+}
+
+// Find the trajectory that contributed most to the track.  The longest
+// trajectory wins.
+double Cube::Tool::MainCompleteness(Cube::Event& event,
+                                    Cube::ReconObject& object) {
+    int trackId = MainTrajectory(event,object);
+    if (trackId < 0) return 0.0;
+    std::vector<Cube::Handle<Cube::G4Hit>> trajSegs
+        = Cube::Tool::TrajectoryG4Hits(event,trackId);
+    double totalLen = 0.0;
+    for (std::vector<Cube::Handle<Cube::G4Hit>>::iterator g = trajSegs.begin();
+         g != trajSegs.end(); ++g) {
+        totalLen += ((*g)->GetStart().Vect() - (*g)->GetStop().Vect()).Mag();
+    }
+    std::vector<Cube::Handle<Cube::G4Hit>> objSegs
+        = Cube::Tool::ObjectG4Hits(event,object);
+    double objectLen = 0.0;
+    for (std::vector<Cube::Handle<Cube::G4Hit>>::iterator g = objSegs.begin();
+         g != objSegs.end(); ++g) {
+        if ((*g)->GetPrimaryId() != trackId) continue;
+        objectLen += ((*g)->GetStart().Vect() - (*g)->GetStop().Vect()).Mag();
+    }
+    if (totalLen < 0.01) return 0.0;
+    return objectLen / totalLen;
 }
 
 // Local Variables:

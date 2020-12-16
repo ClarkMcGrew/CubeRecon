@@ -13,6 +13,11 @@ namespace Cube {
         /// Find the fraction of the track length that comes from the longest
         /// trajectory.
         double MainPurity(Cube::Event& event, Cube::ReconObject& object);
+
+        /// Find how complete the object is.  This is the fraction of the main
+        /// trajectory track length that is contained in the reconstruction
+        /// objet.
+        double MainCompleteness(Cube::Event& event, Cube::ReconObject& object);
     }
 }
 #endif
