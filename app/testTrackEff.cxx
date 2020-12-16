@@ -35,6 +35,8 @@ TH2F* histPrimMuonDir = NULL;
 TH1F* histRecoMuonMomentum = NULL;
 TH1F* histRecoMuonLength = NULL;
 TH1F* histRecoMuonDCos = NULL;
+TH1F* histRecoMuonComplete = NULL;
+TH2F* histRecoMuonLenComplete = NULL;
 TH2F* histRecoMuonMomDCos = NULL;
 TH2F* histRecoMuonDir = NULL;
 TH1F* histEffMuonMomentum = NULL;
@@ -94,6 +96,13 @@ bool AnalyzeEvent(Cube::Event& event) {
         histRecoMuonDCos = new TH1F("recoMuonDCos",
                                     "Angle Relative to Closest Track (Muon)",
                                     20,-1.0,1.0);
+        histRecoMuonComplete = new TH1F("recoMuonComplete",
+                                        "Completeness of the Track (Muon)",
+                                        100,0.0,1.0);
+        histRecoMuonLenComplete = new TH2F("recoMuonLenComplete",
+                                           "Completeness vs Length (Muon)",
+                                           10,0.0,2000.0,
+                                           20,0.0,1.0);
         histRecoMuonMomDCos = new TH2F("recoMuonMomDCos",
                                        "Angle to Neighbor vs Momentum of Muon",
                                        10,0.0,500.0,
@@ -202,7 +211,7 @@ bool AnalyzeEvent(Cube::Event& event) {
         for (std::vector<TVector3>::iterator d1 = directions.begin();
              d1 != directions.end(); ++d1) {
             double d = (*d1) * dir;
-            if (d > 0.999) continue;
+            if (d > 0.999) continue; // Not the same track!
             if (std::abs(d) > std::abs(dCos)) dCos = d;
         }
         int pdgMuon = 13;
@@ -247,12 +256,15 @@ bool AnalyzeEvent(Cube::Event& event) {
         if (!track) continue;
         int mainTraj = Cube::Tool::MainTrajectory(event,*track);
         if (mainTraj<0) continue;
+        // Reject tracks from secondary particles.
         int primTraj = Cube::Tool::PrimaryId(event,mainTraj);
         if (primTraj != mainTraj) continue;
+        // Get the trajectory and check the fiducial for the starting point.
         Cube::Handle<Cube::G4Trajectory> traj = trajectories[primTraj];
         if (!traj) throw;
         double fid= Cube::Tool::ContainedPoint(
             traj->GetInitialPosition().Vect());
+        // Get the trajectory information for convenience.
         int trackId = traj->GetTrackId();
         int pdgCode = std::abs(traj->GetPDGCode());
         std::vector<Cube::Handle<Cube::G4Hit>> segments
@@ -262,6 +274,9 @@ bool AnalyzeEvent(Cube::Event& event) {
         double len = (tail-head).Mag();
         TVector3 dir = traj->GetInitialMomentum().Vect().Unit();
         double mom = traj->GetInitialMomentum().P();
+        // Get the purity and completeness of the track.
+        double purity = Cube::Tool::MainPurity(event,*track);
+        double completeness = Cube::Tool::MainCompleteness(event,*track);
         // Make sure the track is not back to back with another.
         double dCos = 0.0;
         for (std::vector<TVector3>::iterator d1 = directions.begin();
@@ -270,11 +285,14 @@ bool AnalyzeEvent(Cube::Event& event) {
             if (d > 0.999) continue;
             if (std::abs(d) > std::abs(dCos)) dCos = d;
         }
+        // Collect the info for the muon, pion and proton.
         if (pdgCode == pdgMuon) {
             if (dCos < 0.9 && dCos > -0.50) {
                 histRecoMuonMomentum->Fill(mom);
                 histRecoMuonDir->Fill(mom,std::abs(dir.Z()));
                 histRecoMuonLength->Fill(len);
+                histRecoMuonComplete->Fill(completeness);
+                histRecoMuonLenComplete->Fill(len,completeness);
             }
             histRecoMuonMomDCos->Fill(mom,dCos);
             if (len > 50) {
