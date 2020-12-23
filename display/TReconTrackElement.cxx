@@ -77,7 +77,8 @@ Cube::TReconTrackElement::TReconTrackElement(Cube::ReconTrack& track,
               << "   Front Dir: ("
               << unit::AsString(dir.X(), dvar.X(),"direction")
               << ", " << unit::AsString(dir.Y(), dvar.Y(),"direction")
-              << ", " << unit::AsString(dir.Z(), dvar.Z(),"direction") << ")";
+              << ", " << unit::AsString(dir.Z(), dvar.Z(),"direction") << ")"
+              << " T: " << unit::AsString(pos.T(),"time");
 
     }
 
@@ -96,8 +97,8 @@ Cube::TReconTrackElement::TReconTrackElement(Cube::ReconTrack& track,
               << "   Back Dir: ("
               << unit::AsString(d.X(), dv.X(),"direction")
               << ", " << unit::AsString(d.Y(), dv.Y(),"direction")
-              << ", " << unit::AsString(d.Z(), dv.Z(),"direction")
-              << ")";
+              << ", " << unit::AsString(d.Z(), dv.Z(),"direction") << ")"
+              << " T: " << unit::AsString(p.T(),"time");
     }
     else {
         title << std::endl
@@ -105,9 +106,37 @@ Cube::TReconTrackElement::TReconTrackElement(Cube::ReconTrack& track,
     }
 #endif
 
-    CUBE_LOG(0) << "track:: " << title.str() << std::endl;
-
     Cube::ReconNodeContainer& nodes = track.GetNodes();
+#define DUMP_INFO_TO_TITLE
+#ifdef DUMP_INFO_TO_TITLE
+    int maxNodes = 10;
+    for (Cube::ReconNodeContainer::iterator n = nodes.begin();
+         n != nodes.end(); ++n) {
+        if (maxNodes-- < 1) break;
+        Cube::Handle<Cube::TrackState> nodeState = (*n)->GetState();
+        Cube::Handle<Cube::ReconCluster> nodeObject = (*n)->GetObject();
+        title << std::endl << "N: " << nodeState->GetPosition().T();
+        if (nodeObject) {
+            title << " M: " << nodeObject->GetPosition().T()
+                  << "+/-" << std::sqrt(nodeObject->GetPositionVariance().T());
+            Cube::Handle<Cube::HitSelection> hits
+                = nodeObject->GetHitSelection();
+            if (!hits) continue;
+            int maxHits = 6;
+            title << " --";
+            for (Cube::HitSelection::iterator h = hits->begin();
+                 h != hits->end(); ++h) {
+                if (maxHits-- <1) break;
+                int t = 2.0*(*h)->GetTime() + 0.5;
+                int q = (*h)->GetCharge() + 0.5;
+                title << " "  << 0.5*t << "(" << q
+                      << "," <<(*h)->GetTimeUncertainty()<< ")";
+            }
+        }
+    }
+#endif
+
+    CUBE_LOG(0) << "track:: " << title.str() << std::endl;
 
     std::ostringstream objName;
     objName << track.GetName() << "(" << track.GetUniqueID() << ")";
