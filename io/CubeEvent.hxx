@@ -69,7 +69,8 @@ public:
     typedef std::map<int,Cube::Handle<Cube::G4Hit>> G4HitContainer;
     G4HitContainer G4Hits;
 
-    typedef std::map<int,Cube::Handle<Cube::G4Trajectory>> G4TrajectoryContainer;
+    typedef std::map<int,Cube::Handle<Cube::G4Trajectory>>
+    G4TrajectoryContainer;
     G4TrajectoryContainer G4Trajectories;
 
     ClassDef(Event,1);

@@ -16,8 +16,7 @@ class Cube::G4Trajectory : public TObject {
 public:
     G4Trajectory(void)
         : fTrackId(-1), fParentId(-1),
-          fPDGCode(0),
-          fInitialMomentum(0,0,0,0) {}
+          fPDGCode(0) {}
 
     virtual ~G4Trajectory();
 
