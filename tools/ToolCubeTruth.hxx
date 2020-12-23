@@ -17,7 +17,6 @@ namespace Cube {
         /// on when it crosses a certain energy deposition threshold.
         double CubeTime(Cube::Event& event, Cube::Handle<Cube::Hit> hit,
                         double threshold = 0.1 /*MeV*/);
-
     }
 }
 #endif

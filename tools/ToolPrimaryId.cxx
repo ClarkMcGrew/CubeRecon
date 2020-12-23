@@ -13,6 +13,26 @@ int Cube::Tool::PrimaryId(Cube::Event& event, int trajId) {
     return PrimaryId(event,traj->GetParentId());
 }
 
+std::vector<int> Cube::Tool::AllPrimaries(Cube::Event& event) {
+    std::vector<int> output;
+    for (Cube::Event::G4TrajectoryContainer::iterator t
+             = event.G4Trajectories.begin();
+         t != event.G4Trajectories.end(); ++t) {
+        // If the parent id is zero, this is a "real" primary.
+        if (t->second->GetParentId() < 0) {
+            output.push_back(t->second->GetTrackId());
+            continue;
+        }
+        // Check if this is a photon from pizero decay
+        //  NOT IMPLEMENTED
+        // Check if this is a michel electron from muon decay
+        //  NOT IMPLEMENTED
+        // Make sure that the first particle created by a neutron is recorded
+        //  NOT IMPLEMENTED... SHOULD THIS BE IMPLEMENTED?
+    }
+    return output;
+}
+
 // Local Variables:
 // mode:c++
 // c-basic-offset:4

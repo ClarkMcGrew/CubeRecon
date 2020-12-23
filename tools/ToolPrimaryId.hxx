@@ -9,6 +9,12 @@ namespace Cube {
         /// tree of parents with their children.  This looks at the ancestors
         /// to find the originating parent trajectory.
         int PrimaryId(Cube::Event& event, int trajId);
+
+        /// Return a vector of the trajectory id values for all of the primary
+        /// particles in the event.  This is trying to find the "useful"
+        /// primary trajectories, which means it should include the michel
+        /// electrons, and the photons from pizero decay.
+        std::vector<int> AllPrimaries(Cube::Event& event);
     }
 }
 #endif
