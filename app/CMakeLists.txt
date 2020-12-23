@@ -1,5 +1,13 @@
 # Build all of the applications here.
 
+# Configure the dependencies
+find_package(ROOT REQUIRED
+  COMPONENTS Geom Physics Matrix MathCore Tree RIO
+  Eve TreePlayer Ged RGL Gui Graf Graf3d)
+if(ROOT_FOUND)
+  include(${ROOT_USE_FILE})
+endif(ROOT_FOUND)
+
 # Add a program to test writing the objets.
 add_executable(cubeWriteTest cubeWriteTest.cxx)
 target_link_libraries(cubeWriteTest LINK_PUBLIC cuberecon)
@@ -43,6 +51,12 @@ add_executable(testTrackEff.exe testTrackEff.cxx)
 target_link_libraries(testTrackEff.exe LINK_PUBLIC
   cuberecon_io cuberecon_tools)
 install(TARGETS testTrackEff.exe RUNTIME DESTINATION bin)
+
+# Add a test program
+add_executable(testCC0Pi.exe testCC0Pi.cxx)
+target_link_libraries(testCC0Pi.exe LINK_PUBLIC
+  cuberecon_io cuberecon_tools ${ROOT_LIBRARIES} )
+install(TARGETS testCC0Pi.exe RUNTIME DESTINATION bin)
 
 # Add a test program
 add_executable(testVertexResolution.exe testVertexResolution.cxx)
