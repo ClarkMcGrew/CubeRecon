@@ -3,14 +3,13 @@
 #include "TEventManager.hxx"
 #include "TGUIManager.hxx"
 
-#include "CubeEvent.hxx"
-
 #include <TEventManager.hxx>
 
 #include <TGButton.h>
 
 #include <TEveManager.h>
 #include <TEveLine.h>
+#include <TDatabasePDG.h>
 
 #include <sstream>
 #include <iostream>
@@ -27,6 +26,7 @@ Cube::TG4HitChangeHandler::~TG4HitChangeHandler() {
 }
 
 void Cube::TG4HitChangeHandler::Apply() {
+    const TDatabasePDG *pdg = TDatabasePDG::Instance();
 
     fG4HitList->DestroyElements();
 
@@ -58,11 +58,13 @@ void Cube::TG4HitChangeHandler::Apply() {
         double dEdX = energy;
         if (length>0.01) dEdX /= length;
 
+        const TParticlePDG* pdgParticle = pdg->GetParticle(gh->GetPDG());
+
         TEveLine* eveHit = new TEveLine(2);
         std::ostringstream title;
-        title << "Hit(" << gh->GetSegmentId()
-              << ":" << gh->GetPrimaryId()
-              << ":"<<gh->GetPDG() << ")";
+        title << "Hit(" << gh->GetSegmentId() << ")"
+              << " " << gh->GetPrimaryId()
+              << " " <<pdgParticle->GetName();
         title << std::fixed << std::setprecision(2)
               << " " << dEdX << " MeV/mm";
         title << " for " << length << " mm";

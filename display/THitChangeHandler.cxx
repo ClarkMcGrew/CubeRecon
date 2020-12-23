@@ -27,14 +27,14 @@ Cube::THitChangeHandler::~THitChangeHandler() {
 }
 
 void Cube::THitChangeHandler::Apply() {
-    CUBE_ERROR << "About to destroy hit list." << std::endl;
+    // CUBE_ERROR << "About to destroy hit list." << std::endl;
 
     fHitList->DestroyElements();
 
-    CUBE_ERROR << "Check to draw the hits." << std::endl;
+    // CUBE_ERROR << "Check to draw the hits." << std::endl;
 
     if (Cube::TEventDisplay::Get().GUI().GetShowHitsButton()->IsOn()) {
-        CUBE_LOG(0) << "Handle the hits" << std::endl;
+        // CUBE_LOG(0) << "Handle the hits" << std::endl;
         if (!Cube::gEvent) return;
 
         Cube::Handle<Cube::HitSelection> cubeHits

@@ -54,15 +54,12 @@ Cube::TFitChangeHandler::~TFitChangeHandler() {
 }
 
 void Cube::TFitChangeHandler::Apply() {
-    CUBE_ERROR << "Apply" << std::endl;
-
     fHitList->DestroyElements();
     fFitList->DestroyElements();
     fCameraWeight = 0.0;
 
     if (!Cube::TEventDisplay::Get().GUI().GetShowFitsButton()->IsOn()
         && !Cube::TEventDisplay::Get().GUI().GetShowFitHitsButton()->IsOn()) {
-        CUBE_ERROR << "Not On" << std::endl;
         return;
     }
 
@@ -97,7 +94,7 @@ void Cube::TFitChangeHandler::Apply() {
     TGLBEntry* lbEntry;
     while ((lbEntry = (TGLBEntry*) next())) {
         std::string objName(lbEntry->GetTitle());
-        CUBE_ERROR << "Get entry " << objName << std::endl;
+        // CUBE_ERROR << "Get entry " << objName << std::endl;
         Cube::Handle<Cube::ReconObjectContainer> objects
             = gEvent->GetObjectContainer(objName.c_str());
         if (!objects) {
@@ -107,6 +104,7 @@ void Cube::TFitChangeHandler::Apply() {
         index = ShowReconObjects(fFitList,objects,index);
     }
 
+#define SETUP_CAMERA
 #ifdef SETUP_CAMERA
     if (fCameraWeight > 1
         && Cube::TEventDisplay::Get().GUI()

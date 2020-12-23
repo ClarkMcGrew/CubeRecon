@@ -38,7 +38,8 @@ endif (EDEPSIM_LIBRARY)
 set(source
   TEventDisplay.cxx TEventChangeManager.cxx TGUIManager.cxx
   TShowHits.cxx THitChangeHandler.cxx
-  TG4HitChangeHandler.cxx TFitChangeHandler.cxx TFindResultsHandler.cxx
+  TG4HitChangeHandler.cxx TTrajectoryChangeHandler.cxx
+  TFitChangeHandler.cxx TFindResultsHandler.cxx
   TMatrixElement.cxx TReconClusterElement.cxx TReconTrackElement.cxx
   TReconShowerElement.cxx
   ${show_edepsim_source}

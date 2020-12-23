@@ -43,7 +43,7 @@ void Cube::TEventDisplay::Init() {
     // done after TGUIManager is created.
     fEventChangeManager = new TEventChangeManager();
     fEventChangeManager->AddUpdateHandler(new TFindResultsHandler());
-    // fEventChangeManager->AddUpdateHandler(new TTrajectoryChangeHandler());
+    fEventChangeManager->AddUpdateHandler(new TTrajectoryChangeHandler());
     fEventChangeManager->AddUpdateHandler(new TG4HitChangeHandler());
     fEventChangeManager->AddUpdateHandler(new THitChangeHandler());
     fEventChangeManager->AddUpdateHandler(new TFitChangeHandler());

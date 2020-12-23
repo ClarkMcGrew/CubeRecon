@@ -59,6 +59,8 @@ public:
     // Buttons to control showing the hits.
     /////////////////////////////////////////////////////
 
+    TGButton* GetRecalculateViewButton() {return fRecalculateViewButton;}
+
     /// If on, draw the simple hits (i.e. things like fibers)
     TGButton* GetShowSimpleHitsButton() {return fShowSimpleHitsButton;}
 

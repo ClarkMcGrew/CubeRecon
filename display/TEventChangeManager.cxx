@@ -180,8 +180,6 @@ void Cube::TEventChangeManager::ChangeEvent(int change) {
 }
 
 void Cube::TEventChangeManager::NewEvent() {
-    std::cout << "New entry" << Cube::gCubeReconEntryNumber << std::endl;
-
     Cube::gCubeReconTree->GetEntry(Cube::gCubeReconEntryNumber);
     Cube::gAlgorithm = Cube::gEvent;
 
