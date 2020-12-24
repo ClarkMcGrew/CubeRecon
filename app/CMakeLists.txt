@@ -8,11 +8,6 @@ if(ROOT_FOUND)
   include(${ROOT_USE_FILE})
 endif(ROOT_FOUND)
 
-# Add a program to test writing the objets.
-add_executable(cubeWriteTest cubeWriteTest.cxx)
-target_link_libraries(cubeWriteTest LINK_PUBLIC cuberecon)
-install(TARGETS cubeWriteTest RUNTIME DESTINATION bin)
-
 # Add a program to translate an ERepSim event into simple hits.
 add_executable(cubeERepTranslate cubeERepTranslate.cxx)
 target_link_libraries(cubeERepTranslate LINK_PUBLIC cuberecon)
@@ -27,6 +22,11 @@ install(TARGETS cubeMakeHits3D RUNTIME DESTINATION bin)
 add_executable(cubeRecon cubeRecon.cxx)
 target_link_libraries(cubeRecon LINK_PUBLIC cuberecon)
 install(TARGETS cubeRecon RUNTIME DESTINATION bin)
+
+# Add a program to run the reconstruction.
+add_executable(cubeStrip cubeStrip.cxx)
+target_link_libraries(cubeStrip LINK_PUBLIC cuberecon)
+install(TARGETS cubeStrip RUNTIME DESTINATION bin)
 
 # Add a test program
 add_executable(testTrackTiming.exe testTrackTiming.cxx)
