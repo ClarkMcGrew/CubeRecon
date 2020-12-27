@@ -34,51 +34,168 @@ Cube::Hits3D::Hits3D()
 
 Cube::Hits3D::~Hits3D() { }
 
+
+#ifdef CUBE_TIME_CHEAT
+#include <CubeG4Hit.hxx>
+#include <CubeEvent.hxx>
+Cube::Event *gOutputEvent = NULL;
+namespace {
+    std::vector<Cube::Handle<Cube::G4Hit>> CubeSegments(
+        Cube::Hits3D::FiberTQ& fiberTQ) {
+        std::vector<Cube::Handle<Cube::G4Hit>> result;
+        if (fiberTQ.size() != 3) {
+            CUBE_ERROR << "Where's the beef" << std::endl;
+            throw std::runtime_error("Should be three fibers for CubeSegments");
+            return result;
+        }
+        std::set<Cube::Handle<Cube::G4Hit>> hit0;
+        for (int j = 0; j < fiberTQ[0].second->GetContributorCount(); ++j) {
+            int seg = fiberTQ[0].second->GetContributor(j);
+            Cube::Handle<Cube::G4Hit> g4Hit = gOutputEvent->G4Hits[seg];
+            if (!g4Hit) continue;
+            hit0.insert(g4Hit);
+        }
+        std::set<Cube::Handle<Cube::G4Hit>> hit1;
+        for (int j = 0; j < fiberTQ[1].second->GetContributorCount(); ++j) {
+            int seg = fiberTQ[1].second->GetContributor(j);
+            Cube::Handle<Cube::G4Hit> g4Hit = gOutputEvent->G4Hits[seg];
+            if (!g4Hit) continue;
+            hit1.insert(g4Hit);
+        }
+        std::set<Cube::Handle<Cube::G4Hit>> hit2;
+        for (int j = 0; j < fiberTQ[2].second->GetContributorCount(); ++j) {
+            int seg = fiberTQ[2].second->GetContributor(j);
+            Cube::Handle<Cube::G4Hit> g4Hit = gOutputEvent->G4Hits[seg];
+            if (!g4Hit) continue;
+            hit2.insert(g4Hit);
+        }
+        for(std::set<Cube::Handle<Cube::G4Hit>>::iterator s = hit0.begin();
+            s != hit0.end(); ++s) {
+            if (hit1.find(*s) == hit1.end()) continue;
+            if (hit2.find(*s) == hit2.end()) continue;
+            result.push_back(*s);
+        }
+        return result;
+    }
+}
+#endif
+
 // Sort the fiber times, and find the average time for hits in a narrow window
 // of time.  This works so that if one fiber is "out of time" for this hit
 // (usually because the first photon came from a different cube), we still get
 // the average for the fibers that are in coincidence.  If none of the fibers
 // are in coincidence, this returns time of the last fiber.
 std::pair<double,double> Cube::Hits3D::HitTime(FiberTQ& fiberTQ) const {
-    // Intrinsic resolution for a hit.
-    const double hitRes = 0.7*unit::ns;
-
     // Set the window to average hit times over.
     const double timeWindow = 2.5*unit::ns;
+
+    // Intrinsic resolution for a hit coming from the electronics.
+    const double hitRes = 0.7*unit::ns;
 
     // Order the fiber times.  The times are transit time corrected.
     std::sort(fiberTQ.begin(),fiberTQ.end());
 
-    // Now take the charge weighted average and RMS of the late hits.  This is
-    // an approximation of using the fibers that have a localized region of
-    // energy deposition.  Because of geometry, the latest will usually be
-    // from a fiber that the current cube is the close to the sensor.
-    double tSum = 0.0;
-    double ttSum = 0.0;
-    double qSum = 0.0;
+    // Now take the charge weighted average and RMS of the late hits.  The
+    // average is also calculated for all hits to help calculate the
+    // uncertainty.  Using the late hits is an approximation of using the
+    // fibers that have a localized region of energy deposition.  Because of
+    // geometry, the latest will usually be from fibers where the current cube
+    // is the close to the sensor.  Lot's of different methods were tried, and
+    // the latest hit seems to be the best one.
+    double tSum = 0.0; // The sum of times after truncation
+    double ttSum = 0.0; // The sum of time squared after truncation
+    double qSum = 0.0;  // The sum of charge after truncation.
+    double closeFiber = 0.0; // The number of fibers "causally connected".
     double lastTime = fiberTQ.back().first;
     for (FiberTQ::iterator t = fiberTQ.begin(); t != fiberTQ.end(); ++t) {
-        double ww = t->second;
+        double qq = t->second->GetCharge();
         double tt = t->first;
         if (tt < lastTime - timeWindow) continue;
-        tSum += ww*tt;
-        ttSum += ww*tt*tt;
-        qSum += ww;
+        tSum += qq*tt;
+        ttSum += qq*tt*tt;
+        qSum += qq;
+        closeFiber += 1.0;
     }
 
-    if (qSum > 0.0) {
-        double tHit = tSum/qSum;
-        ttSum = ttSum/qSum;
-        double tRMS = ttSum - tHit*tHit;
-        if (tRMS < 0.0) tRMS = 0.0;
-        tRMS = tRMS + hitRes*hitRes;
-        tRMS = std::sqrt(tRMS);
-        return std::pair<double,double>(tHit,tRMS);
+    if (qSum <= 0.0) {
+        CUBE_ERROR << "Invalid hit time" << std::endl;
+        throw std::runtime_error("Invalid cube hit");
+        return std::pair<double,double>(-1.0,-1.0);  // Keep the compiler happy.
     }
 
-    CUBE_ERROR << "Invalid hit time" << std::endl;
-    throw std::runtime_error("Invalid cube hit");
-    return std::pair<double,double>();  // Keep the compiler happy.
+    // The RMS for the causal hits.
+    double tHit = tSum/qSum;
+    ttSum = ttSum/qSum;
+    double tRMS = ttSum - tHit*tHit;
+    if (tRMS < 0.0) tRMS = 0.0;
+    tRMS = std::sqrt(tRMS);
+
+#define ADD_ELECTRONICS_HIT_RESOLUTION
+#ifdef ADD_ELECTRONICS_HIT_RESOLUTION
+    // The variance of the electronics.
+    tRMS = tRMS*tRMS + hitRes*hitRes;
+    tRMS = std::sqrt(tRMS);
+#endif
+
+#ifdef CUBE_TIME_CHEAT
+    #warn THE CUBE TIME IS CHEATING.  DID YOU REALLY MEAN THIS??
+    std::vector<Cube::Handle<Cube::G4Hit>> segs = CubeSegments(fiberTQ);
+    if (segs.empty()) return std::pair<double,double>(-1.0,-1.0);
+    double tCheat = segs.front()->GetStart().T();
+    for (std::vector<Cube::Handle<Cube::G4Hit>>::iterator s = segs.begin();
+         s != segs.end(); ++s) {
+        tCheat = std::min(tCheat,(*s)->GetStart().T());
+    }
+    tCheat += 100.0;
+    std::cout << "Use time cheat with "
+              << tHit << " " << tCheat << " " << tRMS << std::endl;
+    return std::pair<double,double>(tCheat,tRMS);
+#endif
+
+    if (closeFiber > 1.0) return std::pair<double,double>(tHit,tRMS);
+
+#define ADD_FIBER_HIT_RESOLUTION
+#ifdef ADD_FIBER_HIT_RESOLUTION
+    // Set the timing resolution for a single fiber.  This covers the full
+    // range of time that the hit might have come from when we only have the
+    // fiber.  This empirically based on the width of the non-causal hit
+    // residual distribution, but works out to be about twice the fiber length
+    // over sqrt(12).
+    const double fiberRes = 6.0*unit::ns;
+
+    // This is a hit getting it's time from a single fiber, so increase the
+    // uncertainty.
+    tRMS = tRMS*tRMS + fiberRes*fiberRes;
+    tRMS = std::sqrt(tRMS);
+#endif
+
+#ifdef USE_FIBER_SPREAD
+    // The variance due to the possible range of times the energy hit the
+    // fiber.  This uses the spread of times from the hits on the fiber, but
+    // allows out of time hits to contribute to the RMS.
+    double tAll = 0.0; // The sum of all times before truncation
+    double ttAll = 0.0; // The sum of all time squared before truncation
+    double qAll = 0.0; // The sum of all charge before truncation
+    for (FiberTQ::iterator t = fiberTQ.begin(); t != fiberTQ.end(); ++t) {
+        double qq = t->second->GetCharge();
+        double tt = t->first;
+        double ww = std::exp(0.5*(tt-lastTime)/timeWindow);
+        tAll += ww*tt;
+        ttAll += ww*tt*tt;
+        qAll += ww;
+    }
+
+    double aHit = tAll/qAll;
+    ttAll = ttAll/qAll;
+    double aRMS = ttAll - aHit*aHit;
+    if (aRMS < 0.0) aRMS = 0.0;
+    aRMS = std::sqrt(aRMS);
+    tRMS = tRMS*tRMS + aRMS*aRMS;
+    tRMS = std::sqrt(tRMS);
+#endif
+
+    return std::pair<double,double>(tHit,tRMS);
+
 }
 
 bool Cube::Hits3D::MakeHit(Cube::HitSelection& writableHits,
@@ -129,8 +246,8 @@ bool Cube::Hits3D::MakeHit(Cube::HitSelection& writableHits,
     double tHit1 = hit1->GetTime() - dHit1/fLightSpeed;
     double tHit2 = hit2->GetTime() - dHit2/fLightSpeed;
 
-    fiberTQ.push_back(std::make_pair(tHit1,hit1->GetCharge()));
-    fiberTQ.push_back(std::make_pair(tHit2,hit2->GetCharge()));
+    fiberTQ.push_back(std::make_pair(tHit1,hit1));
+    fiberTQ.push_back(std::make_pair(tHit2,hit2));
 
     double dtHit = std::abs(tHit1-tHit2);
     if (hit3) {
@@ -138,7 +255,7 @@ bool Cube::Hits3D::MakeHit(Cube::HitSelection& writableHits,
         double tHit3 = hit3->GetTime() - dHit3/fLightSpeed;
         dtHit = std::max(dtHit,std::abs(tHit1-tHit3));
         dtHit = std::max(dtHit,std::abs(tHit2-tHit3));
-        fiberTQ.push_back(std::make_pair(tHit3,hit3->GetCharge()));
+        fiberTQ.push_back(std::make_pair(tHit3,hit3));
     }
 
     // Check that the hits are "at the same time".  This is the largest
@@ -159,6 +276,10 @@ bool Cube::Hits3D::MakeHit(Cube::HitSelection& writableHits,
     hit->SetChargeUncertainty(std::sqrt(qHit));
 
     std::pair<double,double> timePair = HitTime(fiberTQ);
+    if (timePair.second <= 0.0) {
+        // Something went wrong while building the hit.
+        return false;
+    }
     hit->SetTime(timePair.first);
     hit->SetTimeUncertainty(timePair.second);
 

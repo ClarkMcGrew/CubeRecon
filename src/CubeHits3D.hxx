@@ -71,9 +71,8 @@ public:
     /// Any other value won't apply charge sharing.
     void SetShareCharge(int i) {fShareCharge = i;}
 
+    typedef std::vector<std::pair<double, Cube::Handle<Cube::Hit>>> FiberTQ;
 private:
-
-    typedef std::vector<std::pair<double,double>> FiberTQ;
 
     /// Take three fiber hits (one can be empty) and make a 3D
     /// TWritableReconHit handle objects.  The hits need to be from different
