@@ -18,7 +18,15 @@ std::vector<int> Cube::Tool::AllPrimaries(Cube::Event& event) {
     for (Cube::Event::G4TrajectoryContainer::iterator t
              = event.G4Trajectories.begin();
          t != event.G4Trajectories.end(); ++t) {
-        // If the parent id is zero, this is a "real" primary.
+        if (!t->second) {
+            // This happens when a non-existant trajectory id is accessed.
+            // That creates a new entry in the map that doesn't have a
+            // trajectory attached.
+            std::cout << "Invalid trajectory entry for id " << t->first
+                      << std::endl;
+            continue;
+        }
+        // If the parent id is negative, this is a "real" primary.
         if (t->second->GetParentId() < 0) {
             output.push_back(t->second->GetTrackId());
             continue;
