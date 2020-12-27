@@ -12,6 +12,8 @@
 #include <exception>
 #include <memory>
 
+Cube::Event *gOutputEvent = NULL;
+
 int main(int argc, char **argv) {
     std::cout << "CubeRecon: Hello World" << std::endl;
     int maxEntries = 1E+8; // Maximum to process.
@@ -74,36 +76,37 @@ int main(int argc, char **argv) {
     // Attach to the output tree.
     std::unique_ptr<TFile> outputFile(new TFile(outputName.c_str(),"recreate"));
     TTree *outputTree = new TTree("CubeEvents","Reconstructed Event");
-    static Cube::Event *outputEvent = inputEvent;
-    outputTree->Branch("Event",&outputEvent);
+    gOutputEvent = inputEvent;
+    outputTree->Branch("Event",&gOutputEvent);
 
     // Loop through the events.
     int totalEntries = inputTree->GetEntries();
     totalEntries = std::min(totalEntries,firstEntry+maxEntries);
     for (int entry = firstEntry; entry < totalEntries; ++entry) {
         inputTree->GetEntry(entry);
-        outputEvent = inputEvent;
-        outputEvent->MakeCurrentEvent();
+        gOutputEvent = inputEvent;
+        gOutputEvent->MakeCurrentEvent();
 
-        CUBE_LOG(0) << "Process event " << outputEvent->GetRunId()
-                    << "/" << outputEvent->GetEventId() << std::endl;
+        CUBE_LOG(0) << "Process event "
+                    << entry << "/" << gOutputEvent->GetRunId()
+                    << "/" << gOutputEvent->GetEventId() << std::endl;
 
         // Check if MakeHits3D has been run.  If it is missing, then run it.
         // This will leave the 3D hits as the main hit selection for the
         // event.
         Cube::Handle<Cube::AlgorithmResult> makeHits3D
-            = outputEvent->GetAlgorithmResult("MakeHits3D");
+            = gOutputEvent->GetAlgorithmResult("MakeHits3D");
         if (!makeHits3D) {
             std::unique_ptr<Cube::MakeHits3D>
                 algoMakeHits3D(new Cube::MakeHits3D);
-            makeHits3D = algoMakeHits3D->Process(*outputEvent);
-            outputEvent->AddAlgorithmResult(makeHits3D);
-            outputEvent->AddHitSelection(makeHits3D->GetHitSelection());
+            makeHits3D = algoMakeHits3D->Process(*gOutputEvent);
+            gOutputEvent->AddAlgorithmResult(makeHits3D);
+            gOutputEvent->AddHitSelection(makeHits3D->GetHitSelection());
         }
 
         // Get the main hits for the event.
         Cube::Handle<Cube::HitSelection> hits3D
-            = outputEvent->GetHitSelection();
+            = gOutputEvent->GetHitSelection();
 
         // Run the main reconstruction.
         if (hits3D) {
@@ -111,15 +114,15 @@ int main(int argc, char **argv) {
                 algoRecon(new Cube::Recon);
             Cube::Handle<Cube::AlgorithmResult>
                 recon = algoRecon->Process(*hits3D);
-            outputEvent->AddAlgorithmResult(recon);
+            gOutputEvent->AddAlgorithmResult(recon);
             Cube::Handle<Cube::ReconObjectContainer> finalObjects
                 = recon->GetObjectContainer("final");
-            if (finalObjects) outputEvent->AddObjectContainer(finalObjects);
+            if (finalObjects) gOutputEvent->AddObjectContainer(finalObjects);
         }
 
 
-        CUBE_LOG(0) << "Finished event " << outputEvent->GetRunId()
-                    << "/" << outputEvent->GetEventId() << std::endl;
+        CUBE_LOG(0) << "Finished event " << gOutputEvent->GetRunId()
+                    << "/" << gOutputEvent->GetEventId() << std::endl;
         outputTree->Fill();
     }
 
