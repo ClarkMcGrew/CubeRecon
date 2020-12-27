@@ -189,10 +189,21 @@ bool AnalyzeEvent(Cube::Event& event) {
         if (track) {
             if (track == muonObject) continue;
             objTime = track->GetPosition().T();
+#define USE_TRACK_MEDIAN_TIME
+#ifdef USE_TRACK_MEDIAN_TIME
+            TLorentzVector median = track->GetMedian();
+            double medT = track->GetMedian().T();
+            double dist = (track->GetPosition().Vect()-median.Vect()).Mag();
+            objTime = medT - dist/200.0;
+#endif
         }
         Cube::Handle<Cube::ReconCluster> cluster = *o;
         if (cluster) {
             objTime = cluster->GetPosition().T();
+#define USE_CLUSTER_MEDIAN_TIME
+#ifdef USE_CLUSTER_MEDIAN_TIME
+            objTime = cluster->GetMedian().T();
+#endif
         }
         if (objTime < 0) continue;
         if (objTime < earliestTime) {
@@ -298,6 +309,8 @@ bool AnalyzeEvent(Cube::Event& event) {
               << " " << totalCharge
               << std::endl;
 
+    // Uncomment to save all of the CC0pi events.
+    shouldSave = true;
     return shouldSave;
 }
 
