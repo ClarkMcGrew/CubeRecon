@@ -53,6 +53,57 @@ Cube::ReconObject::~ReconObject() {
     if (fState) delete fState;
 }
 
+TLorentzVector Cube::ReconObject::GetMedian() const {
+    TLorentzVector median;
+    Cube::Handle<Cube::HitSelection> hits = GetHitSelection();
+    if (!hits || hits->empty()) return median;
+
+    std::vector<double> x;
+    std::vector<double> y;
+    std::vector<double> z;
+    std::vector<double> t;
+
+    Cube::HitSelection::const_iterator beg = hits->begin();
+    Cube::HitSelection::const_iterator end = hits->end();
+    while (beg != end) {
+        x.push_back((*beg)->GetPosition().X());
+        y.push_back((*beg)->GetPosition().Y());
+        z.push_back((*beg)->GetPosition().Z());
+        t.push_back((*beg)->GetTime());
+        ++beg;
+    }
+
+    std::sort(x.begin(), x.end());
+    if (x.size()%2) median.SetX(x[x.size()/2]);
+    else {
+        int i = x.size()/2;
+        median.SetX(0.5*(x[i-1]+x[i]));
+    }
+
+    std::sort(y.begin(), y.end());
+    if (y.size()%2) median.SetY(y[y.size()/2]);
+    else {
+        int i = y.size()/2;
+        median.SetY(0.5*(y[i-1]+y[i]));
+    }
+
+    std::sort(z.begin(), z.end());
+    if (z.size()%2) median.SetZ(z[z.size()/2]);
+    else {
+        int i = z.size()/2;
+        median.SetZ(0.5*(z[i-1]+z[i]));
+    }
+
+    std::sort(t.begin(), t.end());
+    if (t.size()%2) median.SetT(t[t.size()/2]);
+    else {
+        int i = t.size()/2;
+        median.SetT(0.5*(t[i-1]+t[i]));
+    }
+
+    return median;
+}
+
 Cube::ReconObject::Status Cube::ReconObject::GetStatus() const {
     // Notice that this returns both the status bits and the deetector bits.
     return fStatus;

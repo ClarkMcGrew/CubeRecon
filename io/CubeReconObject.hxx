@@ -209,6 +209,11 @@ public:
     /// name of the hit selection will be changed to "hits".
     void SetHitSelection(Cube::Handle<Cube::HitSelection> hits) {fHits = hits;}
 
+    /// Return the median X, Y, Z, and T.  Be careful since there may
+    /// not be an actual hit at the median position (X, Y, and Z can be
+    /// from different hits).
+    TLorentzVector GetMedian() const;
+
     /// Provide the reconstruction objects used in the algorithm that created
     /// this object.  The consituients are used to help understand how the
     /// object was fit, and are different from the nodes which represent
