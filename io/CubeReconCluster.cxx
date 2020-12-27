@@ -192,7 +192,7 @@ void Cube::ReconCluster::UpdateFromHits() {
 
         for (int i=0; i<dim; ++i) {
             stateValues(i) += vals(i)/(sigs(i)*sigs(i));
-            stateNorms(i) += 1/(sigs(i)*sigs(i));
+            stateNorms(i) += 1.0/(sigs(i)*sigs(i));
         }
     }
 
