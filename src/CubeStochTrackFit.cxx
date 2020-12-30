@@ -12,6 +12,10 @@
 #include <TRandom.h>
 #include <TDecompChol.h>
 
+#include <Math/Minimizer.h>
+#include <Math/Factory.h>
+#include <Math/Functor.h>
+
 #include <vector>
 #include <cmath>
 
@@ -834,7 +838,92 @@ namespace {
         double logCorr = 1.0 - 0.038*std::log(dist/sqrtRadLen/sqrtRadLen);
         return (13.6*unit::MeV*logCorr)/(beta*mom*sqrtRadLen);
     }
+
+    // This must be destroyed before the event is freed.
+    struct TimeChi2 : public ROOT::Math::IMultiGenFunction {
+        typedef std::vector<
+            std::pair<double,Cube::Handle<Cube::ReconNode>>> TravelVector;
+        TravelVector fTravel;
+
+        explicit TimeChi2(Cube::ReconNodeContainer& nodes) {
+            fTravel.clear();
+            double totalDist = 0.0;
+            for (int i = 0; i < (int) nodes.size(); ++i) {
+                Cube::Handle<Cube::ReconCluster> object = nodes[i]->GetObject();
+                if (i < 1) {
+                    fTravel.push_back(std::make_pair(totalDist,nodes[i]));
+                    continue;
+                }
+                Cube::Handle<Cube::TrackState> state1 = nodes[i]->GetState();
+                Cube::Handle<Cube::TrackState> state0 = nodes[i-1]->GetState();
+                TVector3 diff
+                    = state1->GetPosition().Vect()-state0->GetPosition().Vect();
+                TVector3 dir = state1->GetDirection() + state0->GetDirection();
+                totalDist += diff*dir.Unit();
+                fTravel.push_back(std::make_pair(totalDist,nodes[i]));
+            }
+            // Correct so that the zero distance is close to the center of the
+            // track.
+            int iOffset = fTravel.size()/2;
+            double offsetDist = fTravel[iOffset].first;
+            for (int i = 0; i < (int) nodes.size(); ++i) {
+                fTravel[i].first = fTravel[i].first - offsetDist;
+            }
+        }
+
+        virtual ~TimeChi2() {fTravel.clear();}
+
+        IBaseFunctionMultiDimTempl* Clone() const {return NULL;}
+
+        unsigned int NDim() const {return 2;}
+
+        double DoEval(const double* par) const {
+            double invBeta = par[0];
+            double t0 = par[1];
+            // Cut off the superluminal penalty (velocities more that
+            // C are OK).
+            double chi2 = std::abs(invBeta) - 1.0;
+            chi2 = std::max(0.0,invBeta);
+            // Apply a baseline penalty for velocities less than the speed of
+            // light.
+            chi2 = 4.0*chi2*chi2;
+            for (int i=0; i<fTravel.size(); ++i) {
+                Cube::Handle<Cube::ReconCluster> cluster
+                    = fTravel[i].second->GetObject();
+                // The speed of light.
+                const double ccc = (30.0*unit::cm)/(1.0*unit::ns);
+                // Expected, measured and the variance.
+                double tExp = invBeta*fTravel[i].first/ccc + t0;
+                double tMea = cluster->GetPosition().T();
+                double tVar = cluster->GetPositionVariance().T();
+                // The chi2 for this measurement.  Truncated to reject
+                // outliers.
+                double cc = (tExp-tMea);
+                cc = cc*cc/tVar;
+                const double chi2Epsilon = 1E-6; // Divide by zero is bad...
+                const double chi2Cut = 9.0;
+                const double chi2Offset = 1.0/chi2Epsilon + 1.0/chi2Cut;
+                cc = 1.0/(cc + chi2Epsilon) + 1.0/chi2Cut;
+                cc = 1.0/cc - 1.0/chi2Offset;
+                chi2 += cc;
+                // Set the time.  Done this way because the position is
+                // returned by value (intentionally).
+                Cube::Handle<Cube::TrackState> state
+                    = fTravel[i].second->GetState();
+                TLorentzVector pos = state->GetPosition();
+                pos.SetT(tExp);
+                state->SetPosition(pos);
+            }
+            return chi2;
+        }
+    };
 }
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+// End of namespace
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 
 Cube::StochTrackFit::StochTrackFit(int nSamples)
     : fSampleCount(nSamples) {}
@@ -891,8 +980,9 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
     double priorCurvature;
     double priorCurvatureSigma;
     MakeCurvature(nodes,priorCurvature,priorCurvatureSigma);
-    CUBE_LOG(2) << "Stochastic::" << "Estimated curvature prior: " << priorCurvature
-                  << " +/- " << priorCurvatureSigma << std::endl;
+    CUBE_LOG(2) << "Stochastic::" << "Estimated curvature prior: "
+                << priorCurvature
+                << " +/- " << priorCurvatureSigma << std::endl;
     // Make a prior near the front of the track.
     std::vector<FilterMeasure> priorMeasurements;
     if (nodes.size() > 5) priorMeasurements.resize(5);
@@ -951,7 +1041,8 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
         for (int i=0; i<stateAvg.size(); ++i) {
 #ifdef DEBUG_NUMERIC_PROBLEMS
             if (!std::isfinite(stateAvg[i])) {
-                CUBE_ERROR << "Invalid forward going average value" << std::endl;
+                CUBE_ERROR << "Invalid forward going average value"
+                           << std::endl;
                 throw std::runtime_error("Numeric problem");
             }
 #endif
@@ -960,7 +1051,8 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
 #ifdef DEBUG_NUMERIC_PROBLEMS
                 if (!std::isfinite(stateCov(i,j))) {
                     stateCov.Print();
-                    CUBE_ERROR << "Invalid forward going covariance value" << std::endl;
+                    CUBE_ERROR << "Invalid forward going covariance value"
+                               << std::endl;
                     throw std::runtime_error("Numeric problem");
                 }
 #endif
@@ -1055,6 +1147,7 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
         state->SetEDeposit(state->GetEDeposit()*energyDeposit/eSum);
     }
 
+#ifdef SIMPLE_TIME_LINE_FIT
     {
         // Fill the state times.  This uses a line fit of hit times and
         // (incorrectly) assumes the hits are uniformly spaced along the
@@ -1112,6 +1205,49 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
             state->SetPositionCovariance(3,3,tUnc);
         }
     }
+#else
+    {
+        // Fit an inverse velocity (ns/mm) to the track.  The range of the
+        // inverse velocity is limited so there is a minimum track velocity.
+        // Superluminal velocities are allowed so that timing resolution can
+        // be handled.
+        std::unique_ptr<ROOT::Math::Minimizer>
+            minimizer(ROOT::Math::Factory::CreateMinimizer("Minuit", "Migrad"));
+        if (!minimizer) {
+            CUBE_ERROR << "Minimizer not created" << std::endl;
+            throw std::runtime_error("Unable to create vertex fit minimizer");
+        }
+
+        TimeChi2 chi2(nodes);
+        minimizer->SetFunction(chi2);
+        minimizer->SetVariable(0,"invBeta",0.0,1.0);
+        minimizer->SetVariable(1,"T0",input->GetMedian().T(),1.0);
+        minimizer->SetPrintLevel(0);
+
+        minimizer->Minimize();
+        double minChi2 = chi2.DoEval(minimizer->X());
+
+        CUBE_LOG(0) << "TIME FIT RESULT:"
+                    << " " << minimizer->X()[0]
+                    << " " << minimizer->X()[1]
+                    << " " << minChi2
+                    << "/" << nodes.size()
+                    << std::endl;
+        CUBE_LOG(0) << "TIME FIT ERROR: "
+                    << " " << minimizer->Errors()[0]
+                    << " " << minimizer->Errors()[1]
+                    << std::endl;
+
+        double tUnc = minimizer->Errors()[1];
+        for (int i = 0; i < (int) nodes.size(); ++i) {
+            Cube::Handle<Cube::TrackState> state = nodes[i]->GetState();
+            // Eliminate all time correlations.
+            for (int j = 0; j<4; ++j)  state->SetPositionCovariance(3,j,0.0);
+            // Set the time variance
+            state->SetPositionCovariance(3,3,tUnc);
+        }
+    }
+#endif
 
     // Find the curvature and set it to be the same for all nodes.
     double curv = 0.0;
