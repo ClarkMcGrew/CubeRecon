@@ -38,11 +38,11 @@ void AnalyzeEvent(Cube::Event& event) {
         std::cout << "Create the histogram" << std::endl;
         histTrackTiming = new TH2F("trackTiming","Time versus length",
                                    30,0.0,3000.0,
-                                   40,0.0,20.0);
+                                   40,0.0,10.0);
         histDirectionTiming = new TH2F("directionTiming",
                                    "Time versus length rel. to direction",
                                    30,0.0,3000.0,
-                                   40,-20.0,20.0);
+                                   60,-5.0,10.0);
         profDirectionTiming = new TProfile(
             "profileTiming",
             "Time versus length rel. to direction",

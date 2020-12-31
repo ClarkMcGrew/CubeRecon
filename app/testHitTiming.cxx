@@ -28,7 +28,10 @@ void AnalyzeEvent(Cube::Event& event) {
     static TH1F* histAvgHitTiming = NULL;
     static TH1F* histMaxHitTiming = NULL;
     static TH1F* histLateHitTiming = NULL;
+    static TH1F* histLateHitCount = NULL;
+    static TH1F* histLateHitDiff = NULL;
     static TH1F* histWghtHitTiming = NULL;
+    static TH1F* histCubeCount = NULL;
 
     if (!histHitTiming) {
         std::cout << "Create the histogram" << std::endl;
@@ -42,9 +45,18 @@ void AnalyzeEvent(Cube::Event& event) {
         histLateHitTiming = new TH1F("LateHitTiming",
                                      "Time Resolution for Avg. Near Last Hit",
                                      80,-20.0,20.0);
+        histLateHitCount = new TH1F("LateHitCount",
+                                    "Number of fibers near last hit",
+                                    4,0.0,4.0);
+        histLateHitDiff = new TH1F("LateHitDiff",
+                                   "Time from last fiber",
+                                   80,-20.0,0.0);
         histWghtHitTiming = new TH1F("wghtHitTiming",
                                      "Time Resolution for weighting",
                                     80,-20.0,20.0);
+        histCubeCount = new TH1F("cubeCount",
+                                 "Number of cubes with energy on a fiber",
+                                 10,0.0, 10.0);
     }
 
     Cube::Handle<Cube::HitSelection> eventHits
@@ -94,6 +106,7 @@ void AnalyzeEvent(Cube::Event& event) {
         if ((*h)->GetConstituentCount() != 3) {
             std::cout <<" OH! " << (*h)->GetConstituentCount() << std::endl;
         }
+        int lateCount = 0;
         for (int i = 0; i<(*h)->GetConstituentCount();++i) {
             Cube::Handle<Cube::Hit> ch = (*h)->GetConstituent(i);
             if (ch->GetContributorCount() < 1) {
@@ -102,12 +115,19 @@ void AnalyzeEvent(Cube::Event& event) {
             }
             double dd = ((*h)->GetPosition() - ch->GetPosition()).Mag();
             double tt = ch->GetTime() - dd/200.0;
+            if (tt < maxT - 1E-10) histLateHitDiff->Fill(tt-maxT);
             if (tt < maxT - 2.5) continue;
+            ++lateCount;
             lateT += tt*ch->GetCharge();
             lateW += ch->GetCharge();
         }
         lateT = lateT/lateW;
         histLateHitTiming->Fill(lateT-trueTime-100.0);
+        histLateHitCount->Fill(lateCount+0.5);
+
+        for (auto hh:  D2ToD3) {
+            histCubeCount->Fill(hh.second.size()+0.5);
+        }
 
         ////////////////////////////////////////////////////////////
         // Calculate hit time assuming that all deposites along the fiber are
