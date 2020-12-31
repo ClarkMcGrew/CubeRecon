@@ -840,12 +840,12 @@ namespace {
     }
 
     // This must be destroyed before the event is freed.
-    struct TimeChi2 : public ROOT::Math::IMultiGenFunction {
+    struct NodeTimeFit : public ROOT::Math::IMultiGenFunction {
         typedef std::vector<
             std::pair<double,Cube::Handle<Cube::ReconNode>>> TravelVector;
         TravelVector fTravel;
 
-        explicit TimeChi2(Cube::ReconNodeContainer& nodes) {
+        explicit NodeTimeFit(Cube::ReconNodeContainer& nodes) {
             fTravel.clear();
             double totalDist = 0.0;
             for (int i = 0; i < (int) nodes.size(); ++i) {
@@ -871,7 +871,7 @@ namespace {
             }
         }
 
-        virtual ~TimeChi2() {fTravel.clear();}
+        virtual ~NodeTimeFit() {fTravel.clear();}
 
         IBaseFunctionMultiDimTempl* Clone() const {return NULL;}
 
@@ -882,11 +882,11 @@ namespace {
             double t0 = par[1];
             // Cut off the superluminal penalty (velocities more that
             // C are OK).
-            double chi2 = std::abs(invBeta) - 1.0;
-            chi2 = std::max(0.0,invBeta);
+            double timeGoodness = std::abs(invBeta) - 1.0;
+            timeGoodness = std::max(0.0,invBeta);
             // Apply a baseline penalty for velocities less than the speed of
             // light.
-            chi2 = 4.0*chi2*chi2;
+            timeGoodness = 4.0*timeGoodness*timeGoodness;
             for (int i=0; i<fTravel.size(); ++i) {
                 Cube::Handle<Cube::ReconCluster> cluster
                     = fTravel[i].second->GetObject();
@@ -896,7 +896,7 @@ namespace {
                 double tExp = invBeta*fTravel[i].first/ccc + t0;
                 double tMea = cluster->GetPosition().T();
                 double tVar = cluster->GetPositionVariance().T();
-                // The chi2 for this measurement.  Truncated to reject
+                // The timeGoodness for this measurement.  Truncated to reject
                 // outliers.
                 double cc = (tExp-tMea);
                 cc = cc*cc/tVar;
@@ -905,7 +905,7 @@ namespace {
                 const double chi2Offset = 1.0/chi2Epsilon + 1.0/chi2Cut;
                 cc = 1.0/(cc + chi2Epsilon) + 1.0/chi2Cut;
                 cc = 1.0/cc - 1.0/chi2Offset;
-                chi2 += cc;
+                timeGoodness += cc;
                 // Set the time.  Done this way because the position is
                 // returned by value (intentionally).
                 Cube::Handle<Cube::TrackState> state
@@ -914,7 +914,7 @@ namespace {
                 pos.SetT(tExp);
                 state->SetPosition(pos);
             }
-            return chi2;
+            return timeGoodness;
         }
     };
 }
@@ -1147,7 +1147,46 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
         state->SetEDeposit(state->GetEDeposit()*energyDeposit/eSum);
     }
 
-#ifdef SIMPLE_TIME_LINE_FIT
+#ifndef SIMPLE_TIME_LINE_FIT
+    {
+        // Fit an inverse velocity (ns/mm) to the track.  The range of the
+        // inverse velocity is limited so there is a minimum track velocity.
+        // Superluminal velocities are allowed so that timing resolution can
+        // be handled.
+        std::unique_ptr<ROOT::Math::Minimizer>
+            minimizer(ROOT::Math::Factory::CreateMinimizer("Minuit", "Migrad"));
+        if (!minimizer) {
+            CUBE_ERROR << "Minimizer not created" << std::endl;
+            throw std::runtime_error("Unable to create vertex fit minimizer");
+        }
+
+        NodeTimeFit timeGoodness(nodes);
+        minimizer->SetFunction(timeGoodness);
+        minimizer->SetVariable(0,"invBeta",0.0,1.0);
+        minimizer->SetVariable(1,"T0",input->GetMedian().T(),1.0);
+        minimizer->SetPrintLevel(0);
+
+        minimizer->Minimize();
+        // Make sure the nodes are filled at the best fit position.  They are
+        // filled in DoEval.
+        double bestTimeGoodness = timeGoodness.DoEval(minimizer->X());
+
+        // Since the NodeTimeFit is setup as a robust estimator (not an actual
+        // chi2), the estimated uncertainties are not very appropriate.  The
+        // slope uncertainty is particularly poorly estimated since the slope
+        // has an extra non-linear penalty term.  Based on a quick look, the
+        // return Error on the fitted time offset seems to be a reasonable
+        // uncertainty estimate, even if it isn't formally correct.
+        double tUnc = minimizer->Errors()[1];
+        for (int i = 0; i < (int) nodes.size(); ++i) {
+            Cube::Handle<Cube::TrackState> state = nodes[i]->GetState();
+            // Eliminate all time correlations.
+            for (int j = 0; j<4; ++j)  state->SetPositionCovariance(3,j,0.0);
+            // Set the time variance
+            state->SetPositionCovariance(3,3,tUnc);
+        }
+    }
+#else
     {
         // Fill the state times.  This uses a line fit of hit times and
         // (incorrectly) assumes the hits are uniformly spaced along the
@@ -1205,48 +1244,6 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
             state->SetPositionCovariance(3,3,tUnc);
         }
     }
-#else
-    {
-        // Fit an inverse velocity (ns/mm) to the track.  The range of the
-        // inverse velocity is limited so there is a minimum track velocity.
-        // Superluminal velocities are allowed so that timing resolution can
-        // be handled.
-        std::unique_ptr<ROOT::Math::Minimizer>
-            minimizer(ROOT::Math::Factory::CreateMinimizer("Minuit", "Migrad"));
-        if (!minimizer) {
-            CUBE_ERROR << "Minimizer not created" << std::endl;
-            throw std::runtime_error("Unable to create vertex fit minimizer");
-        }
-
-        TimeChi2 chi2(nodes);
-        minimizer->SetFunction(chi2);
-        minimizer->SetVariable(0,"invBeta",0.0,1.0);
-        minimizer->SetVariable(1,"T0",input->GetMedian().T(),1.0);
-        minimizer->SetPrintLevel(0);
-
-        minimizer->Minimize();
-        double minChi2 = chi2.DoEval(minimizer->X());
-
-        CUBE_LOG(0) << "TIME FIT RESULT:"
-                    << " " << minimizer->X()[0]
-                    << " " << minimizer->X()[1]
-                    << " " << minChi2
-                    << "/" << nodes.size()
-                    << std::endl;
-        CUBE_LOG(0) << "TIME FIT ERROR: "
-                    << " " << minimizer->Errors()[0]
-                    << " " << minimizer->Errors()[1]
-                    << std::endl;
-
-        double tUnc = minimizer->Errors()[1];
-        for (int i = 0; i < (int) nodes.size(); ++i) {
-            Cube::Handle<Cube::TrackState> state = nodes[i]->GetState();
-            // Eliminate all time correlations.
-            for (int j = 0; j<4; ++j)  state->SetPositionCovariance(3,j,0.0);
-            // Set the time variance
-            state->SetPositionCovariance(3,3,tUnc);
-        }
-    }
 #endif
 
     // Find the curvature and set it to be the same for all nodes.
@@ -1288,6 +1285,9 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
     input->SetNDOF(trackDOF);
 
     // Check the track direction based on timing and reverse if necessary.
+    // This could be replaced by sorting the nodes according to the state
+    // time.  If a sorting is done, it would handle track configurations where
+    // a node is out of order.
     double dt = input->GetBack()->GetPosition().T()
         - input->GetFront()->GetPosition().T();
     if (dt < 0.0) input->ReverseTrack();
