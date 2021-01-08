@@ -6,6 +6,10 @@
 #include <CubeLog.hxx>
 #include <CubeHandle.hxx>
 #include <CubeAlgorithmResult.hxx>
+#include <CubeReconCluster.hxx>
+#include <CubeUnits.hxx>
+
+#include <CubeInfo.hxx>
 
 #include <sstream>
 #include <iomanip>
@@ -39,15 +43,55 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
         return result;
     }
 
-    // Slice the event up by time.
-    Cube::Handle<Cube::AlgorithmResult> timeSlice
-        = Run<Cube::TimeSlice>(*inputHits);
-    if (!timeSlice) return Cube::Handle<Cube::AlgorithmResult>();
-    result->AddAlgorithmResult(timeSlice);
+    Cube::HitSelection only3DST;
+    Cube::HitSelection onlyTPC;
+    for (Cube::HitSelection::iterator h = inputHits->begin();
+         h != inputHits->end(); ++h) {
+        if (Cube::Info::Is3DST((*h)->GetIdentifier())) {
+            only3DST.push_back((*h));
+            continue;
+        }
+        if (Cube::Info::IsTPC((*h)->GetIdentifier())) {
+            onlyTPC.push_back((*h));
+            continue;
+        }
+    }
 
     // Create the container for the final objects.
     Cube::Handle<ReconObjectContainer> finalObjects(
         new Cube::ReconObjectContainer("final"));
+
+    if (!onlyTPC.empty()) {
+        int problems = 0;
+        Cube::Handle<Cube::ReconCluster> tpcCluster(new Cube::ReconCluster);
+        Cube::HitSelection tpc3D;
+        for (Cube::HitSelection::iterator h = onlyTPC.begin();
+             h != onlyTPC.end(); ++h) {
+            if (!(*h)->HasProperty("DriftVelocity")) {
+                if (!problems) CUBE_ERROR << "TPC Hit without drift velocity"
+                                          << std::endl;
+                ++problems;
+                continue;
+            }
+            Cube::WritableHit hit3d(*(*h));
+            TVector3 pos = hit3d.GetPosition();
+            double x = pos.X();
+            x -= hit3d.GetTime()*hit3d.GetProperty("DriftVelocity");
+            pos.SetX(x);
+            hit3d.SetPosition(pos);
+            hit3d.SetTime(0.0*unit::ns);
+            hit3d.AddHit(*h);
+            tpc3D.push_back(Cube::Handle<Cube::Hit>(new Cube::Hit(hit3d)));
+        }
+        tpcCluster->FillFromHits("TPC",tpc3D);
+        finalObjects->push_back(tpcCluster);
+    }
+
+    // Slice the event up by time.
+    Cube::Handle<Cube::AlgorithmResult> timeSlice
+        = Run<Cube::TimeSlice>(only3DST);
+    if (!timeSlice) return Cube::Handle<Cube::AlgorithmResult>();
+    result->AddAlgorithmResult(timeSlice);
 
     // Process each time slice as a separate cube reconstruction.
     Cube::Handle<Cube::ReconObjectContainer> slices
@@ -82,6 +126,7 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
             result->AddAlgorithmResult(hits3D);
         }
     }
+
 
     // Save the final objects last.
     result->AddObjectContainer(finalObjects);
