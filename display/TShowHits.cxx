@@ -22,6 +22,10 @@ bool Cube::TShowHits::operator () (TEveElementList* elements,
 
     std::map<Int_t, Cube::Handle<Cube::Hit> > firstHits;
 
+    fThreshold =
+        Cube::TEventDisplay::Get().GUI().GetHitChargeThreshold()->GetNumber();
+
+
     // Find the first hit for each cube, and get the total charge in the cube.
     for (Cube::HitSelection::const_iterator h = hits.begin();
          h != hits.end(); ++h) {
@@ -59,21 +63,33 @@ bool Cube::TShowHits::operator () (TEveElementList* elements,
     if (nCharge > 0.0) aveCharge /= nCharge;
 
     CUBE_LOG(1) << "Charge Range: " << minCharge << " to " << maxCharge
-                << "   Average: " << aveCharge << std::endl;
+                << "   Average: " << aveCharge
+                << "   With threshold of " << fThreshold << std::endl;
 
     int hitCount = 0;
 
     // Now plot all of the hits.
     TVector3 hitPos;
     TVector3 hitSize;
-    for (std::map<Int_t,Cube::Handle<Cube::Hit>>::iterator id
-             = firstHits.begin();
-         id != firstHits.end(); ++id) {
-        Int_t hitId = id->first;
-        Cube::Handle<Cube::Hit> hit = firstHits[hitId];
+    for (Cube::HitSelection::const_iterator h = hits.begin();
+         h != hits.end(); ++h) {
+        Cube::Handle<Cube::Hit> hit = *h;
         double charge = hit->GetCharge();
         if (charge < fThreshold) continue;
-        if (charge<1.0) charge = 1.0;
+        if (charge < 1.0) charge = 1.0;
+        bool onlyFirstHits = false;
+        if (onlyFirstHits) {
+            std::map<Int_t,Cube::Handle<Cube::Hit>>::iterator fh
+                = firstHits.find(hit->GetIdentifier());
+            if (fh == firstHits.end()) continue;
+            if (fh->second == *h) {
+                std::cout << "First Hit" << std::endl;
+            }
+            else {
+                continue;
+            }
+        }
+
         hitPos = hit->GetPosition();
         hitSize = hit->GetSize();
 
@@ -81,54 +97,62 @@ bool Cube::TShowHits::operator () (TEveElementList* elements,
         std::ostringstream title;
         title << "Hit " << unit::AsString(hit->GetTime(),"time")
               << " " << unit::AsString(hit->GetCharge(), "pe");
-        if (hit->GetConstituentCount() > 1) {
-            title << " composite: " << hit->GetConstituentCount();
-        }
-        else {
+        if (hit->GetConstituentCount() < 1
+            && Cube::Info::Is3DST(hit->GetIdentifier())) {
             chargeScale = 3.0;
             hitPos = hitPos + hitSize;
+        }
+        else {
+            title << " composite: " << hit->GetConstituentCount();
         }
 
         ++hitCount;
 
-        int color = TEventDisplay::Get().LogColor(
-                                     chargeScale*charge,
-                                     10.0,400.0,2.0);
+        int color = 0;
+        if (Cube::Info::Is3DST(hit->GetIdentifier())) {
+            color = TEventDisplay::Get().LogColor(chargeScale*charge,
+                                                  10.0,400.0,2.0);
+        }
+        else {
+            color = TEventDisplay::Get().LogColor(charge,
+                                                  10.0,maxCharge,2.0);
+        }
 
+        double hitScale = 0.8;
         TEveBox* eveHit = new TEveBox("Hit");
         eveHit->SetTitle(title.str().c_str());
         eveHit->SetVertex(0,
-                           hitPos.X()-hitSize.X(),
-                           hitPos.Y()-hitSize.Y(),
-                           hitPos.Z()-hitSize.Z());
+                           hitPos.X()-hitScale*hitSize.X(),
+                           hitPos.Y()-hitScale*hitSize.Y(),
+                           hitPos.Z()-hitScale*hitSize.Z());
         eveHit->SetVertex(1,
-                           hitPos.X()-hitSize.X(),
-                           hitPos.Y()+hitSize.Y(),
-                           hitPos.Z()-hitSize.Z());
+                           hitPos.X()-hitScale*hitSize.X(),
+                           hitPos.Y()+hitScale*hitSize.Y(),
+                           hitPos.Z()-hitScale*hitSize.Z());
         eveHit->SetVertex(2,
-                           hitPos.X()+hitSize.X(),
-                           hitPos.Y()+hitSize.Y(),
-                           hitPos.Z()-hitSize.Z());
+                           hitPos.X()+hitScale*hitSize.X(),
+                           hitPos.Y()+hitScale*hitSize.Y(),
+                           hitPos.Z()-hitScale*hitSize.Z());
         eveHit->SetVertex(3,
-                           hitPos.X()+hitSize.X(),
-                           hitPos.Y()-hitSize.Y(),
-                           hitPos.Z()-hitSize.Z());
+                           hitPos.X()+hitScale*hitSize.X(),
+                           hitPos.Y()-hitScale*hitSize.Y(),
+                           hitPos.Z()-hitScale*hitSize.Z());
         eveHit->SetVertex(4,
-                           hitPos.X()-hitSize.X(),
-                           hitPos.Y()-hitSize.Y(),
-                           hitPos.Z()+hitSize.Z());
+                           hitPos.X()-hitScale*hitSize.X(),
+                           hitPos.Y()-hitScale*hitSize.Y(),
+                           hitPos.Z()+hitScale*hitSize.Z());
         eveHit->SetVertex(5,
-                           hitPos.X()-hitSize.X(),
-                           hitPos.Y()+hitSize.Y(),
-                           hitPos.Z()+hitSize.Z());
+                           hitPos.X()-hitScale*hitSize.X(),
+                           hitPos.Y()+hitScale*hitSize.Y(),
+                           hitPos.Z()+hitScale*hitSize.Z());
         eveHit->SetVertex(6,
-                           hitPos.X()+hitSize.X(),
-                           hitPos.Y()+hitSize.Y(),
-                           hitPos.Z()+hitSize.Z());
+                           hitPos.X()+hitScale*hitSize.X(),
+                           hitPos.Y()+hitScale*hitSize.Y(),
+                           hitPos.Z()+hitScale*hitSize.Z());
         eveHit->SetVertex(7,
-                           hitPos.X()+hitSize.X(),
-                           hitPos.Y()-hitSize.Y(),
-                           hitPos.Z()+hitSize.Z());
+                           hitPos.X()+hitScale*hitSize.X(),
+                           hitPos.Y()-hitScale*hitSize.Y(),
+                           hitPos.Z()+hitScale*hitSize.Z());
         eveHit->SetMainColor(color);
 
         elements->AddElement(eveHit);
