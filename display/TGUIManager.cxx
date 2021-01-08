@@ -138,6 +138,16 @@ void Cube::TGUIManager::MakeControlTab() {
     hf->AddFrame(checkButton, layoutHints);
     fShowCompHitsButton = checkButton;
 
+    groupFrame = new TGGroupFrame(hf, "Hit charge threshold");
+    fHitChargeThreshold = new TGNumberEntry(
+        groupFrame, 10.0, 9, 5,
+        TGNumberFormat::kNESInteger,
+        TGNumberFormat::kNEANonNegative,
+        TGNumberFormat::kNELLimitMin,
+        0, 1E+20);
+    groupFrame->AddFrame(fHitChargeThreshold,layoutHints);
+    hf->AddFrame(groupFrame, layoutHints);
+
     //////////////////////////////////////////////////////
     // Control how fits are drawn
     //////////////////////////////////////////////////////

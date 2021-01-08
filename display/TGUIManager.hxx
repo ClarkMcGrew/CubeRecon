@@ -70,6 +70,9 @@ public:
     /// If on, draw the main hits.
     TGButton* GetShowHitsButton() {return fShowHitsButton;}
 
+    /// Set the charge threshold for hits.
+    TGNumberEntry* GetHitChargeThreshold() {return fHitChargeThreshold;}
+
     /// Get the check button selecting if all the hits in the event should be
     /// shown.  This draws all the hit selections in ~/hits/.
     TGButton* GetShowOtherHitsButton() {return fShowOtherHitsButton;}
@@ -158,9 +161,10 @@ private:
     TGButton* fShowTrajectoriesButton;
     TGButton* fShowG4HitsButton;
 
+    TGButton* fShowHitsButton;
     TGButton* fShowSimpleHitsButton;
     TGButton* fShowCompHitsButton;
-    TGButton* fShowHitsButton;
+    TGNumberEntry* fHitChargeThreshold;
 
     TGButton* fShowOtherHitsButton;
     TGButton* fShowFibersButton;
