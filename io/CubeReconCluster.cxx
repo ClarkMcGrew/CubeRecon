@@ -195,7 +195,8 @@ void Cube::ReconCluster::UpdateFromHits() {
         // deposit is not averaged,  It's taken out of the sum.
         stateValues(eDep) += vals(eDep);
         stateNorms(eDep) = 1.0;
-        for (int i=1; i<dim; ++i) {
+        for (int i=0; i<dim; ++i) {
+            if (i == eDep) continue;
 #ifdef ENERGY_WEIGHTED
             stateValues(i) += vals(eDep)*vals(i)/(sigs(i)*sigs(i));
             stateNorms(i) += vals(eDep)*1.0/(sigs(i)*sigs(i));
