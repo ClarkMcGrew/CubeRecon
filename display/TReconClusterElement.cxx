@@ -121,6 +121,7 @@ Cube::TReconClusterElement::TReconClusterElement(Cube::ReconCluster& cluster,
         ->IsOn();
     if (!connectEnds && !connectHits) return;
 
+#ifdef CLUSTERS_AS_TRACKS
     int points = 1;
     if (connectEnds) ++points;
     if (connectHits) points += hits->size() - 1;
@@ -157,6 +158,44 @@ Cube::TReconClusterElement::TReconClusterElement(Cube::ReconCluster& cluster,
     }
 
     AddElement(eveLine);
+#else
+    if (connectEnds) {
+            TEveLine* eveLine = new TEveLine(2);
+            eveLine->SetName(name.str().c_str());
+            eveLine->SetTitle(title.str().c_str());
+            eveLine->SetSourceObject(&cluster);
+            eveLine->SetLineColor(color);
+            eveLine->SetLineStyle(1);
+            eveLine->SetLineWidth(2);
+            eveLine->SetPoint(0,
+                              hits->front()->GetPosition().X(),
+                              hits->front()->GetPosition().Y(),
+                              hits->front()->GetPosition().Z());
+            eveLine->SetPoint(1,
+                              hits->back()->GetPosition().X(),
+                              hits->back()->GetPosition().Y(),
+                              hits->back()->GetPosition().Z());
+            AddElement(eveLine);
+    }
+    if (connectHits) {
+        for (Cube::HitSelection::iterator h = hits->begin();
+             h != hits->end(); ++h) {
+            TEveLine* eveLine = new TEveLine(2);
+            eveLine->SetName(name.str().c_str());
+            eveLine->SetTitle(title.str().c_str());
+            eveLine->SetSourceObject(&cluster);
+            eveLine->SetLineColor(color);
+            eveLine->SetLineStyle(1);
+            eveLine->SetLineWidth(2);
+            eveLine->SetPoint(0, pos.X(), pos.Y(), pos.Z());
+            eveLine->SetPoint(1,
+                              (*h)->GetPosition().X(),
+                              (*h)->GetPosition().Y(),
+                              (*h)->GetPosition().Z());
+            AddElement(eveLine);
+        }
+    }
+#endif
 }
 
 // Local Variables:
