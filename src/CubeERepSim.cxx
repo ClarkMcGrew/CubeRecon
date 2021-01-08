@@ -2,6 +2,146 @@
 #include "CubeERepSim.hxx"
 #include "CubeInfo.hxx"
 #include "CubeG4Hit.hxx"
+#include "CubeLog.hxx"
+
+namespace {
+    void Fill3DST(Cube::Event& event, int h,
+                  Cube::WritableHit& wHit) {
+        double extraFiberLength
+            = (*ERepSim::Input::Get().Property)[
+                "3DST.Response.Atten.SensorDist"]
+            + (*ERepSim::Input::Get().Property)[
+                "3DST.Response.Atten.MirrorDist"];
+
+        /// Get the information from the ERepSim Properties
+        double lo =(*ERepSim::Input::Get().Property)["3DST.Response.CubeMin"];
+        double hi =(*ERepSim::Input::Get().Property)["3DST.Response.CubeMax"];
+        int countX =(*ERepSim::Input::Get().Property)["3DST.Response.Cubes"];
+        double pitchX = (hi-lo)/(countX-1.0);
+        double lengthX = pitchX*countX + extraFiberLength;
+
+        lo =(*ERepSim::Input::Get().Property)["3DST.Response.BarMin"];
+        hi =(*ERepSim::Input::Get().Property)["3DST.Response.BarMax"];
+        int countY =(*ERepSim::Input::Get().Property)["3DST.Response.Bars"];
+        double pitchY = (hi-lo)/(countY-1.0);
+        double lengthY = pitchY*countY + extraFiberLength;
+
+        lo =(*ERepSim::Input::Get().Property)["3DST.Response.PlaneMin"];
+        hi =(*ERepSim::Input::Get().Property)["3DST.Response.PlaneMax"];
+        int countZ =(*ERepSim::Input::Get().Property)["3DST.Response.Planes"];
+        double pitchZ = (hi-lo)/(countZ-1.0);
+        double lengthZ = pitchZ*countZ + extraFiberLength;
+
+        double ratio12
+            = (*ERepSim::Input::Get().Property)["3DST.Response.Atten.Ratio12"];
+        double atten1
+            = (*ERepSim::Input::Get().Property)["3DST.Response.Atten.Tau1"];
+        double atten2
+            = (*ERepSim::Input::Get().Property)["3DST.Response.Atten.Tau2"];
+        double reflect
+            = (*ERepSim::Input::Get().Property)["3DST.Response.Atten.Reflect"];
+
+        int id = (*ERepSim::Input::Get().HitSensorId)[h];
+        if (!Cube::Info::Is3DST(id)) {
+            throw std::runtime_error("Not the 3DST");
+        }
+
+        int det = Cube::Info::SubDetector(id);
+        int cube = Cube::Info::CubeNumber(id);
+        int bar = Cube::Info::CubeBar(id);
+        int pln = Cube::Info::CubePlane(id);
+        wHit.SetIdentifier(id);
+        wHit.SetPosition(
+            TVector3((*ERepSim::Input::Get().HitX)[h],
+                     (*ERepSim::Input::Get().HitY)[h],
+                     (*ERepSim::Input::Get().HitZ)[h]));
+        TVector3 size(pitchX, pitchY, pitchZ);
+        if (cube < 0) {
+            size.SetX(lengthX);
+        }
+        if (bar < 0) {
+            size.SetY(lengthY);
+        }
+        if (pln < 0) {
+            size.SetZ(lengthZ);
+        }
+        wHit.SetUncertainty(0.289*size);
+        wHit.SetSize(0.5*size);
+        wHit.SetTime((*ERepSim::Input::Get().HitTime)[h]);
+        wHit.SetTimeUncertainty((*ERepSim::Input::Get().HitTimeWidth)[h]);
+        wHit.SetCharge((*ERepSim::Input::Get().HitCharge)[h]);
+        int segBegin = (*ERepSim::Input::Get().HitSegmentBegin)[h];
+        int segEnd = (*ERepSim::Input::Get().HitSegmentEnd)[h];
+        for (int seg = segBegin; seg < segEnd; ++seg) {
+            int s = (*ERepSim::Input::Get().SegmentIds)[seg];
+            wHit.AddContributor(s);
+        }
+        wHit.SetProperty("Ratio12",ratio12);
+        wHit.SetProperty("Atten1",atten1);
+        wHit.SetProperty("Atten2",atten2);
+        wHit.SetProperty("Reflectivity",reflect);
+#ifdef DOUBLE_CHECK_OUTPUT
+        CUBE_LOG(0) << "3DST Hit  "
+                  << " " << wHit.GetPosition().X()
+                  << " " << wHit.GetPosition().Y()
+                  << " " << wHit.GetPosition().Z()
+                  << " " << wHit.GetTime()
+                  << " " << wHit.GetCharge()
+                  << std::endl;
+#endif
+    }
+
+    void FillTPC(Cube::Event& event, int h,
+                  Cube::WritableHit& wHit) {
+
+        double pitchX = 10.0;
+        double pitchY = 10.0;
+        double pitchZ = 10.0;
+
+        int id = (*ERepSim::Input::Get().HitSensorId)[h];
+        if (!Cube::Info::IsTPC(id)) {
+            throw std::runtime_error("Not the TPC");
+        }
+
+        int det = Cube::Info::SubDetector(id);
+        int anode = Cube::Info::TPCAnode(id);
+        const double vdrift = 0.078; // mm/ns
+        if (anode == 0) wHit.SetProperty("DriftVelocity",-vdrift);
+        else if (anode == 1) wHit.SetProperty("DriftVelocity",vdrift);
+
+        wHit.SetIdentifier(id);
+        wHit.SetPosition(
+            TVector3((*ERepSim::Input::Get().HitX)[h],
+                     (*ERepSim::Input::Get().HitY)[h],
+                     (*ERepSim::Input::Get().HitZ)[h]));
+        wHit.SetTime((*ERepSim::Input::Get().HitTime)[h]);
+        wHit.SetTimeUncertainty((*ERepSim::Input::Get().HitTimeWidth)[h]);
+        wHit.SetCharge((*ERepSim::Input::Get().HitCharge)[h]);
+        pitchX = 2.0*2.0*vdrift*wHit.GetTimeUncertainty();
+        TVector3 size(pitchX, pitchY, pitchZ);
+        wHit.SetUncertainty(0.289*size);
+        wHit.SetSize(0.5*size);
+        int segBegin = (*ERepSim::Input::Get().HitSegmentBegin)[h];
+        int segEnd = (*ERepSim::Input::Get().HitSegmentEnd)[h];
+        for (int seg = segBegin; seg < segEnd; ++seg) {
+            int s = (*ERepSim::Input::Get().SegmentIds)[seg];
+            wHit.AddContributor(s);
+        }
+#ifdef  DOUBLE_CHECK_OUTPUT
+#undef  DOUBLE_CHECK_OUTPUT
+        CUBE_LOG(0) << "TPC Hit  "
+                    << " " << wHit.GetPosition().X()
+                    << " " << wHit.GetPosition().Y()
+                    << " " << wHit.GetPosition().Z()
+                    << " " << wHit.GetSize().X()
+                    << " " << wHit.GetSize().Y()
+                    << " " << wHit.GetSize().Z()
+                    << " " << wHit.GetTime()
+                    << " " << wHit.GetCharge()
+                    << std::endl;
+#endif
+    }
+}
 
 /// A function to convert data in an ERepSim tree into a reconstruction event.
 /// This assumes that the GetEntry has been called for all of the necessary
@@ -43,17 +183,17 @@ void Cube::ConvertERepSim(Cube::Event& event) {
     double reflect
         = (*ERepSim::Input::Get().Property)["3DST.Response.Atten.Reflect"];
 
-    std::cout << "3DST with " << countX
+    CUBE_LOG(0) << "3DST with " << countX
               << " x " << countY
               << " x " << countZ
               << " cubes"
               << std::endl;
-    std::cout << "     Pitch is " << pitchX
+    CUBE_LOG(0) << "     Pitch is " << pitchX
               << " x " << pitchY
               << " x " << pitchZ
               << " mm"
               << std::endl;
-    std::cout << "     Attenuation is "
+    CUBE_LOG(0) << "     Attenuation is "
               << atten1 << " mm (" << ratio12 << ")"
               << ", plus " << atten2 << " mm (" << 1.0-ratio12 << ")"
               << " and reflectivity of " << reflect
@@ -122,60 +262,38 @@ void Cube::ConvertERepSim(Cube::Event& event) {
     }
 
     /// Get the hits out of the ERepSim trees.
+    int hits3DST = 0;
+    int hitsTPC = 0;
     Cube::Handle<Cube::HitSelection> hits(new Cube::HitSelection("Raw"));
     for (std::size_t h = 0;
          h < ERepSim::Input::Get().HitSensorId->size(); ++h) {
         Cube::WritableHit wHit;
         int id = (*ERepSim::Input::Get().HitSensorId)[h];
         int det = Cube::Info::SubDetector(id);
-        int cube = Cube::Info::CubeNumber(id);
-        int bar = Cube::Info::CubeBar(id);
-        int pln = Cube::Info::CubePlane(id);
-        wHit.SetIdentifier(id);
-        wHit.SetPosition(
-            TVector3((*ERepSim::Input::Get().HitX)[h],
-                     (*ERepSim::Input::Get().HitY)[h],
-                     (*ERepSim::Input::Get().HitZ)[h]));
-        TVector3 size(pitchX, pitchY, pitchZ);
-        if (cube < 0) {
-            size.SetX(lengthX);
-            ++yzHits;
+        if (Cube::Info::Is3DST(id)) {
+            ++hits3DST;
+            Fill3DST(event,h,wHit);
         }
-        if (bar < 0) {
-            size.SetY(lengthY);
-            ++xzHits;
+        else if (Cube::Info::IsTPC(id)) {
+            ++hitsTPC;
+            FillTPC(event,h,wHit);
         }
-        if (pln < 0) {
-            size.SetZ(lengthZ);
-            ++xyHits;
+        else {
+            CUBE_ERROR << "Unrecognized hit" << std::endl;
+            continue;
         }
-        wHit.SetUncertainty(0.289*size);
-        wHit.SetSize(0.5*size);
-        wHit.SetTime((*ERepSim::Input::Get().HitTime)[h]);
-        wHit.SetTimeUncertainty((*ERepSim::Input::Get().HitTimeWidth)[h]);
-        wHit.SetCharge((*ERepSim::Input::Get().HitCharge)[h]);
-        int segBegin = (*ERepSim::Input::Get().HitSegmentBegin)[h];
-        int segEnd = (*ERepSim::Input::Get().HitSegmentEnd)[h];
-        for (int seg = segBegin; seg < segEnd; ++seg) {
-            int s = (*ERepSim::Input::Get().SegmentIds)[seg];
-            wHit.AddContributor(s);
-        }
-        wHit.SetProperty("Ratio12",ratio12);
-        wHit.SetProperty("Atten1",atten1);
-        wHit.SetProperty("Atten2",atten2);
-        wHit.SetProperty("Reflectivity",reflect);
         Cube::Handle<Cube::Hit> hit(new Cube::Hit(wHit));
         hits->push_back(hit);
     }
     event.AddHitSelection(hits);
 
-    std::cout << event.GetName() << ": " << event.GetRunId()
-              << "/" << event.GetEventId();
+    CUBE_LOG(0) << event.GetName() << ": " << event.GetRunId()
+              << "/" << event.GetEventId()
+              << " -- hits: " << hits->size()
+              << " 3DST: " << hits3DST
+              << " TPC: " << hitsTPC
+              << std::endl;
 
-    std::cout << " Hits " << hits->size()
-              << " (xz: " << xzHits << ")"
-              << " (yz: " << yzHits << ")"
-              << " (xy: " << xyHits << ")" << std::endl;
 }
 
 // Local Variables:
