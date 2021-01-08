@@ -169,7 +169,8 @@ void Cube::ReconCluster::UpdateFromHits() {
     int posZ = state->GetZIndex();
     int posT = state->GetTIndex();
 
-    // Find the energy deposit and the average position.
+    // Find the energy deposit and the average position.  The position
+    // averages are energy deposition weighted.
     TVectorT<double> stateValues(dim);
     TVectorT<double> stateNorms(dim);
     for (Cube::HitSelection::const_iterator h = beg;
@@ -190,12 +191,23 @@ void Cube::ReconCluster::UpdateFromHits() {
         vals(posT) = (*h)->GetTime();
         sigs(posT) = (*h)->GetTimeUncertainty();
 
-        for (int i=0; i<dim; ++i) {
+        // Form the sums needed to find averages.  Note that the energy
+        // deposit is not averaged,  It's taken out of the sum.
+        stateValues(eDep) += vals(eDep);
+        stateNorms(eDep) = 1.0;
+        for (int i=1; i<dim; ++i) {
+#ifdef ENERGY_WEIGHTED
+            stateValues(i) += vals(eDep)*vals(i)/(sigs(i)*sigs(i));
+            stateNorms(i) += vals(eDep)*1.0/(sigs(i)*sigs(i));
+#else
             stateValues(i) += vals(i)/(sigs(i)*sigs(i));
             stateNorms(i) += 1.0/(sigs(i)*sigs(i));
+#endif
         }
     }
 
+    // Reset the edep norm so it is handled with everything else, then form
+    // the averages.
     stateNorms(eDep) = 1.0;
     for (int i=0; i<dim; ++i) {
         if (stateNorms(i) > 0) stateValues(i) /= stateNorms(i);
