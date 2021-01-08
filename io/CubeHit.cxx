@@ -92,6 +92,9 @@ Cube::WritableHit::WritableHit() {
     fTimeUncertainty = -9999;
 }
 
+Cube::WritableHit::WritableHit(const Cube::Hit& h)
+    : Cube::Hit(h) {}
+
 Cube::WritableHit::WritableHit(const Cube::WritableHit& h)
     : Cube::Hit(h) {}
 

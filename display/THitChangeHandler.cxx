@@ -40,10 +40,18 @@ void Cube::THitChangeHandler::Apply() {
         Cube::Handle<Cube::HitSelection> cubeHits
             = Cube::gEvent->GetHitSelection();
 
-        if (cubeHits) {
-            Cube::TShowHits showCubeHits;
-            showCubeHits(fHitList,*cubeHits);
+        if (!cubeHits) {
+            CUBE_LOG(0) << " No hits in the event" << std::endl;
+            return;
         }
+
+        CUBE_LOG(0) << "Showing " << cubeHits->size()
+                    <<" hits from "
+                    << cubeHits->GetName()
+                    << std::endl;
+
+        Cube::TShowHits showCubeHits;
+        showCubeHits(fHitList,*cubeHits);
     }
 
 }

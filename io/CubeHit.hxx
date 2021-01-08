@@ -173,6 +173,7 @@ protected:
 class Cube::WritableHit : public Hit {
 public:
     WritableHit();
+    WritableHit(const Hit& h);
     WritableHit(const WritableHit& h);
     virtual ~WritableHit();
 
