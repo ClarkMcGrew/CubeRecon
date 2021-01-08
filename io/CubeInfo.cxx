@@ -5,31 +5,82 @@
 #include <iostream>
 
 int Cube::Info::SubDetector(int id) {
-    int id0 = (id>>27);
+    int id0 = (id>>27)&0x1F;
     return id0;
 }
 
+bool Cube::Info::Is3DST(int id) {
+    return (Cube::Info::SubDetector(id) == 13);
+}
+
 int Cube::Info::CubeNumber(int id) {
+    if (!Cube::Info::Is3DST(id)) {
+        throw std::runtime_error("Not the 3DST");
+    }
     int idc = (id>>18) & 0x000001FF;
     if (idc > 500) return -1;
     return idc;
 }
 
 int Cube::Info::CubeBar(int id) {
+    if (!Cube::Info::Is3DST(id)) {
+        throw std::runtime_error("Not the 3DST");
+    }
     int idb = (id>>9) & 0x000001FF;
     if (idb > 500) return -1;
     return idb;
 }
 
 int Cube::Info::CubePlane(int id) {
+    if (!Cube::Info::Is3DST(id)) {
+        throw std::runtime_error("Not the 3DST");
+    }
     int idp = id & 0x000001FF;
     if (idp > 500) return -1;
     return idp;
 }
 
+bool Cube::Info::IsTPC(int id) {
+    if (Cube::Info::SubDetector(id) == 25) return true;
+    if (Cube::Info::SubDetector(id) == 26) return true;
+    if (Cube::Info::SubDetector(id) == 27) return true;
+    return false;
+}
+
+int Cube::Info::TPCNumber(int id) {
+    if (!Cube::Info::IsTPC(id)) {
+        throw std::runtime_error("Not a TPC");
+    }
+    return Cube::Info::SubDetector(id) - 25;
+}
+
+int Cube::Info::TPCAnode(int id) {
+    if (!Cube::Info::IsTPC(id)) {
+        throw std::runtime_error("Not a TPC");
+    }
+    int ida = (id >> 24) & 0x00000007;
+    return ida;
+}
+
+int Cube::Info::TPCPadY(int id) {
+    if (!Cube::Info::IsTPC(id)) {
+        throw std::runtime_error("Not a TPC");
+    }
+    int idy = (id >> 12) & 0x00000FFF;
+    return idy;
+}
+
+int Cube::Info::TPCPadZ(int id) {
+    if (!Cube::Info::IsTPC(id)) {
+        throw std::runtime_error("Not a TPC");
+    }
+    int idz = 0x00000FFF;
+    return idz;
+}
+
 int Cube::Info::IdentifierProjection(int id) {
     int proj = 0;
-    if (Cube::Info::SubDetector(id) != 13) return proj;
+    if (!Cube::Info::Is3DST(id)) return proj;
     if (Cube::Info::CubeNumber(id) > -1) proj += Cube::Info::kXAxis;
     if (Cube::Info::CubeBar(id) > -1) proj += Cube::Info::kYAxis;
     if (Cube::Info::CubePlane(id) > -1) proj += Cube::Info::kZAxis;
