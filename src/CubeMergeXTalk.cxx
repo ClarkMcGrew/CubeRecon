@@ -26,11 +26,28 @@ Cube::MergeXTalk::~MergeXTalk() {}
 
 namespace {
     // Determine the proximity between cubes.  The proximity is defined as the
-    // number of "cube to cube" jumps needed to get between the cubes.
+    // maximum distance along any axis between the two hit.  This cuts out a
+    // cube of space where the two hits are considered to be in proximity.
+    // The hit size is subtraced off of the distances so this is really the
+    // corner to corner distance.
     struct CubeProximity {
         double operator()(Cube::Handle<Cube::Hit> lhs,
                           Cube::Handle<Cube::Hit> rhs) {
+            // Hits have to be in the same sub detector
+            if (Cube::Info::SubDetector(lhs->GetIdentifier())
+                != Cube::Info::SubDetector(rhs->GetIdentifier())) {
+                return 1E+20;
+            }
             TVector3 delta = lhs->GetPosition() - rhs->GetPosition();
+            delta[0] = std::abs(delta[0])
+                - lhs->GetSize()[0] - rhs->GetSize()[0];
+            if (delta[0] < 0.0) delta[0] = 0.0;
+            delta[1] = std::abs(delta[1])
+                - lhs->GetSize()[1] - rhs->GetSize()[1];
+            if (delta[1] < 0.0) delta[1] = 0.0;
+            delta[2] = std::abs(delta[2])
+                - lhs->GetSize()[2] - rhs->GetSize()[2];
+            if (delta[2] < 0.0) delta[2] = 0.0;
             double d = std::max(std::abs(delta.X()), std::abs(delta.Y()));
             return std::max(d,std::abs(delta.Z()));
         }
@@ -89,11 +106,13 @@ Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
             allTracks.push_back(trackNodeHits);
             continue;
         }
+        // Save the clusters so their hits can be checked for mergeing.
         Cube::Handle<Cube::ReconCluster> cluster = *t;
         if (cluster) {
             clusterList.push_back(cluster);
             continue;
         }
+        // Save the other objects, like vertexes, into the final objects.
         finalObjects->push_back(*t);
     }
 
@@ -163,7 +182,10 @@ Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
         finalObjects->push_back(track);
     }
 
+
 #ifdef RECLUSTER_LEFTOVERS
+#warning The reclustering should be done outside of CubeMergeXTalk.cxx
+
     // build new clusters from the hits in leftOverClusters.
     HitSet clusterHits;
     for (ClusterList::iterator c = leftOverClusters.begin();
@@ -179,7 +201,7 @@ Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
     // Work around template parsing bug in some GCC versions...
     typedef Cube::Handle<Cube::Hit> Arg;
     typedef TTmplDensityCluster<Arg, CubeProximity> ClusterCubes;
-    ClusterCubes clusterCubes(1, 28.0); // Just less than 3 cubes.
+    ClusterCubes clusterCubes(1, 18.0); // Two cubes on either side.
     clusterCubes.Cluster(clusterHits.begin(), clusterHits.end());
     for (int i=0; i<clusterCubes.GetClusterCount(); ++i) {
         const ClusterCubes::Points& points = clusterCubes.GetCluster(i);
@@ -207,7 +229,9 @@ int Cube::MergeXTalk::CountHitNeighbors(AllHits& allHits,
     for (AllHits::iterator h = allHits.begin(); h != allHits.end(); ++h) {
         Cube::Handle<Cube::Hit> trackHit = h->first;
         double diff = proximity(trackHit,hit);
-        if (std::abs(diff) < 18.0) ++neighborHits;
+        // Only hits that are direct neighbors are considered.  This assumes
+        // that the hit sizes are all larger than one mm.
+        if (std::abs(diff) < 1.0*unit::mm) ++neighborHits;
     }
     return neighborHits;
 }
@@ -232,15 +256,29 @@ Cube::Handle<Cube::Hit> Cube::MergeXTalk::FindBestNeighbor(
     Cube::Handle<Cube::Hit> bestHit;
     for (AllHits::iterator h = allHits.begin(); h != allHits.end(); ++h) {
         Cube::Handle<Cube::Hit> trackHit = h->first;
-        double dist = proximity(trackHit,hit);
         // If hit and trackHit are the same, it's the best hit.
-        if (dist < 1.0) return trackHit;
-        // The trackHit and hit are next to each other.  Take the biggest
-        // charge.
-        if (dist > 18.0) continue;
-        if (!bestHit) bestHit = trackHit;
-        else if (bestHit->GetCharge() < trackHit->GetCharge()) {
+        if (trackHit == hit) return trackHit;
+        double dist = proximity(trackHit,hit);
+        if (dist > 1.0) continue;
+        // The hits are neighbors, and haven't found another neighbor yet, so
+        // tkat this one.
+        if (!bestHit) {
             bestHit = trackHit;
+            continue;
+        }
+        // Accept the closest neighbor first.  This favors hits in the same
+        // column, row, or plane.
+        TVector3 trackDist = hit->GetPosition() - trackHit->GetPosition();
+        TVector3 bestDist = hit->GetPosition() - bestHit->GetPosition();
+        if (trackDist.Mag() < bestDist.Mag()) {
+            bestHit = trackHit;
+            continue;
+        }
+        // The two candidate neighbors are at the same distance, so take the
+        // one with the biggest charge.
+        if (bestHit->GetCharge() < trackHit->GetCharge()) {
+            bestHit = trackHit;
+            continue;
         }
     }
     return bestHit;
