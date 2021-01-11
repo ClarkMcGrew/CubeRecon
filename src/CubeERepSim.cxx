@@ -276,8 +276,7 @@ void Cube::ConvertERepSim(Cube::Event& event) {
         }
         else if (Cube::Info::IsTPC(id)) {
             ++hitsTPC;
-            // FillTPC(event,h,wHit);
-            continue;
+            FillTPC(event,h,wHit);
         }
         else {
             CUBE_ERROR << "Unrecognized hit" << std::endl;
