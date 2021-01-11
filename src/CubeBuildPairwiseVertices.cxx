@@ -79,10 +79,10 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                                         trackMaxRequiredLength);
     }
 
-    CUBE_ERROR << "BuildPairwiseVertices:: Possible tracks "
-               << allTracks.size()
-               << " with required length " << fRequiredTrackLength
-               << std::endl;
+    CUBE_LOG(0) << "BuildPairwiseVertices:: Possible tracks "
+                << allTracks.size()
+                << " with required length " << fRequiredTrackLength
+                << std::endl;
 
     fActualMaxDistance = fMaxDistance;
     if (allTracks.size() > 20) {
