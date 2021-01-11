@@ -16,17 +16,33 @@ namespace {
     struct CubeProximity {
         double operator()(Cube::Handle<Cube::Hit> lhs,
                           Cube::Handle<Cube::Hit> rhs) {
-            double dx = Cube::Info::CubeNumber(lhs->GetIdentifier())
-                - Cube::Info::CubeNumber(rhs->GetIdentifier());
+            if (Cube::Info::Is3DST(lhs->GetIdentifier())
+                && Cube::Info::Is3DST(rhs->GetIdentifier())) {
+                double dx = Cube::Info::CubeNumber(lhs->GetIdentifier())
+                    - Cube::Info::CubeNumber(rhs->GetIdentifier());
 
-            double dy = Cube::Info::CubeBar(lhs->GetIdentifier())
-                - Cube::Info::CubeBar(rhs->GetIdentifier());
+                double dy = Cube::Info::CubeBar(lhs->GetIdentifier())
+                    - Cube::Info::CubeBar(rhs->GetIdentifier());
 
-            double dz = Cube::Info::CubePlane(lhs->GetIdentifier())
-                - Cube::Info::CubePlane(rhs->GetIdentifier());
+                double dz = Cube::Info::CubePlane(lhs->GetIdentifier())
+                    - Cube::Info::CubePlane(rhs->GetIdentifier());
 
-            double d = std::max(std::abs(dx), std::abs(dy));
-            return std::max(d,std::abs(dz));
+                double d = std::max(std::abs(dx), std::abs(dy));
+                return std::max(d,std::abs(dz));
+            }
+            if (Cube::Info::IsTPC(lhs->GetIdentifier())
+                && Cube::Info::IsTPC(rhs->GetIdentifier())) {
+                TVector3 dist
+                    = lhs->GetPosition() - rhs->GetPosition();
+                for (int i = 0; i < 3; ++i) {
+                    dist[i] = std::abs(dist[i])
+                        - lhs->GetSize()[i]
+                        - rhs->GetSize()[i];
+                    if (dist[i] < 0.0) dist[i] = 0.0;
+                }
+                return dist.Mag()/10.0;
+            }
+            return 1E+20;
         }
     };
 }
