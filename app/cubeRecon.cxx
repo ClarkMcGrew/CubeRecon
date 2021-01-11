@@ -87,9 +87,13 @@ int main(int argc, char **argv) {
         gOutputEvent = inputEvent;
         gOutputEvent->MakeCurrentEvent();
 
+        CUBE_LOG(0) << "#####################################################"
+                    << std::endl;
         CUBE_LOG(0) << "Process event "
                     << entry << "/" << gOutputEvent->GetRunId()
                     << "/" << gOutputEvent->GetEventId() << std::endl;
+        CUBE_LOG(0) << "#####################################################"
+                    << std::endl;
 
         // Check if MakeHits3D has been run.  If it is missing, then run it.
         // This will leave the 3D hits as the main hit selection for the
