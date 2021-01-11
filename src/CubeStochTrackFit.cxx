@@ -35,8 +35,8 @@ namespace {
     typedef std::vector<float> FilterState;
     typedef Cube::Handle<Cube::ReconCluster> FilterMeasure;
 
-    // Copied from the TCorrValue index definitions for Cube::TrackState.  These
-    // definitions *MUST* *MATCH* the indices in Cube::TrackState.
+    // Copied from the TCorrValue index definitions for Cube::TrackState.
+    // These definitions *MUST* *MATCH* the indices in Cube::TrackState.
     enum {
         kEDep = 0,
         kX = 1,
@@ -272,7 +272,8 @@ namespace {
             weight += s->first;
 #ifdef DEBUG_NUMERIC_PROBLEMS
             if (!std::isfinite(s->first)) {
-                CUBE_ERROR << "Invalid sample weight " << s->first << std::endl;
+                CUBE_ERROR << "Invalid sample weight " << s->first
+                           << std::endl;
                 throw std::runtime_error("Numeric problem");
             }
 #endif
@@ -281,7 +282,8 @@ namespace {
                 if (!std::isfinite(s->second[i])) {
                     CUBE_ERROR << "Invalid sample" << std::endl;
                     for (std::size_t j = 0; j<dim; ++j) {
-                        CUBE_LOG(0) << "S[" << j << "] = " << s->second[j] << std::endl;
+                        CUBE_LOG(0) << "S[" << j << "] = " << s->second[j]
+                                    << std::endl;
                     }
                     throw std::runtime_error("Numeric problem");
                 }
@@ -528,7 +530,8 @@ namespace {
             - beginObject->GetPosition().Vect();
         double dist = diff.Mag();
         if (dist < 1.0) {
-            CUBE_ERROR << "The begin and middle are " << dist << " apart" << std::endl;
+            CUBE_ERROR << "The begin and middle are " << dist << " apart"
+                       << std::endl;
             return 0.0;
         }
         double w = 1.0;
@@ -542,7 +545,8 @@ namespace {
             - middleObject->GetPosition().Vect();
         dist = diff.Mag();
         if (dist < 1.0) {
-            CUBE_ERROR << "The end and middle are " << dist << " apart" << std::endl;
+            CUBE_ERROR << "The end and middle are " << dist << " apart"
+                       << std::endl;
             return 0.0;
         }
         w = 1.0;
@@ -577,7 +581,8 @@ namespace {
         for (int trial = 0; trial < maxTrial; ++trial) {
             int offset = (int) gRandom->Uniform(minOffset,maxOffset);
             int first = (int) gRandom->Uniform(0.0,nodes.size()-2*offset);
-            Cube::ReconNodeContainer::const_iterator begin = nodes.begin()+first;
+            Cube::ReconNodeContainer::const_iterator begin
+                = nodes.begin()+first;
             Cube::ReconNodeContainer::const_iterator middle = begin + offset;
             Cube::ReconNodeContainer::const_iterator end = middle + offset;
             // Check the validity of begin, middle and end!
@@ -636,8 +641,12 @@ namespace {
                    std::vector<FilterMeasure> meas,
                    double curv, double curvSigma) {
         CUBE_LOG(2) <<"Stochastic::" <<
-                       "Initial curvature " << curv << "+/-" << curvSigma << std::endl;
+                       "Initial curvature " << curv << "+/-" << curvSigma
+                    << std::endl;
         double mSize = meas.size();
+        if (mSize < 2) {
+            CUBE_ERROR << "Not enough measurements" << std::endl;
+        }
         // Estimate energy deposition
         double avgEDep = 0.0;
         for (int i=0; i<meas.size(); ++i) {
@@ -646,6 +655,27 @@ namespace {
         double length =
             (meas.front()->GetPosition().Vect()
              - meas.back()->GetPosition().Vect()).Mag();
+        if (length<0.1) {
+            CUBE_ERROR << "Measurements at same location" << std::endl;
+            for (int i = 0; i<meas.size(); ++i) {
+                CUBE_LOG(0) << i
+                            << " " << meas[i]->GetEDeposit()
+                            << " " <<  meas[i]->GetPosition().X()
+                            << " " <<  meas[i]->GetPosition().Y()
+                            << " " <<  meas[i]->GetPosition().Z()
+                            << " " <<  meas[i]->GetPosition().T()
+                            << std::endl;
+                for (auto hit : *meas[i]->GetHitSelection()) {
+                    CUBE_LOG(0) << "   " << hit->GetIdentifier()
+                               << " " << hit->GetCharge()
+                               << " " << hit->GetPosition().X()
+                               << " " << hit->GetPosition().Y()
+                               << " " << hit->GetPosition().Z()
+                               << " " << hit->GetTime()
+                               << std::endl;
+                }
+            }
+        }
         avgEDep /= length;
         for (FilterSIR::SampleVector::iterator s = samples.begin();
              s != samples.end(); ++s) {
@@ -826,7 +856,8 @@ namespace {
 
     // Find the multiple scattering constants for a particular mass and
     // momentum.  The mass, momentum and length are HEP units.
-    double MultipleScatteringAngle(double mass, double mom, double dist) {
+    double MultipleScatteringAngle(double mass, double mom,
+                                   double radLen, double dist) {
         if (mass < 1.0*unit::MeV) {
             // Electrons don't multiple scatter, so return a big value to take
             // into account how "flexible" the track is.
@@ -834,7 +865,8 @@ namespace {
         }
         double enr = std::sqrt(mass*mass + mom*mom);
         double beta = std::sqrt(1.0-mass*mass/enr/enr);
-        double sqrtRadLen = std::sqrt(41.31 * unit::cm);
+        // double sqrtRadLen = std::sqrt(41.31 * unit::cm);
+        double sqrtRadLen = std::sqrt(radLen);
         double logCorr = 1.0 - 0.038*std::log(dist/sqrtRadLen/sqrtRadLen);
         return (13.6*unit::MeV*logCorr)/(beta*mom*sqrtRadLen);
     }
@@ -977,9 +1009,9 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
     filter.SetResampleFraction(0.0);
 
     // Estimate the curvature
-    double priorCurvature;
-    double priorCurvatureSigma;
-    MakeCurvature(nodes,priorCurvature,priorCurvatureSigma);
+    double priorCurvature = 0.0;
+    double priorCurvatureSigma = 1.0/(20.0*unit::cm);
+    // MakeCurvature(nodes,priorCurvature,priorCurvatureSigma);
     CUBE_LOG(2) << "Stochastic::" << "Estimated curvature prior: "
                 << priorCurvature
                 << " +/- " << priorCurvatureSigma << std::endl;
@@ -995,8 +1027,8 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
          s != samples.end(); ++s) {
         filter.Propagator(s->second,priorMeasurements[0]);
     }
-    MakeAverage(samples,stateAvg,stateCov);
 #ifdef DEBUG_PRIOR
+    MakeAverage(samples,stateAvg,stateCov);
     for (int i=0; i<stateAvg.size(); ++i) {
         nodes.front()->GetState()->SetValue(i,stateAvg[i]);
         for (int j=0; j < stateAvg.size(); ++j) {
@@ -1008,9 +1040,11 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
 
     // Set the noise terms (this should be done for each step when real
     // multiple scattering is considered).  The constant values work well
-    // enough for a simple fitter.
+    // enough for a simple fitter.  This uses the radiation length for
+    // plastic.
     filter.Propagator.fDirSigma
-        = MultipleScatteringAngle(105*unit::MeV,500*unit::MeV,1*unit::cm);
+        = MultipleScatteringAngle(105*unit::MeV, 500*unit::MeV,
+                                  41.31*unit::cm, 1*unit::cm);
     filter.Propagator.fPosSigma = filter.Propagator.fDirSigma/sqrt(3.0);
     filter.Propagator.fCurvSigma = 0.0001;
     filter.Propagator.fEDepSigma = 0.01;
@@ -1251,7 +1285,7 @@ Cube::StochTrackFit::Apply(Cube::Handle<Cube::ReconTrack>& input) {
     if (nodes.size() > 5) {
         Cube::ReconNodeContainer::iterator middle = nodes.begin()
             + nodes.size()/2;
-        curv = FindCurvature(nodes.begin(), middle, nodes.end()-1);
+        // curv = FindCurvature(nodes.begin(), middle, nodes.end()-1);
     }
     for (int i = 0; i < (int) nodes.size(); ++i) {
         Cube::Handle<Cube::TrackState> state = nodes[i]->GetState();
