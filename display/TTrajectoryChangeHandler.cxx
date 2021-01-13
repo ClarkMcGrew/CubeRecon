@@ -48,12 +48,21 @@ void Cube::TTrajectoryChangeHandler::Apply() {
             traj->GetInitialMomentum().M();
         if (eKin < 5.0) eKin = 5.0;
 
-        const TParticlePDG* pdgParticle = pdg->GetParticle(traj->GetPDGCode());
-        std::string pdgName = pdgParticle->GetName();
-
+        std::string pdgName = "undefined";
         int charged = 0;
-        if (pdgParticle->Charge() > 0.0) charged = +1;
-        if (pdgParticle->Charge() < 0.0) charged = -1;
+
+        const TParticlePDG* pdgParticle = pdg->GetParticle(traj->GetPDGCode());
+        if (pdgParticle) {
+            pdgName = pdgParticle->GetName();
+            if (pdgParticle->Charge() > 0.0) charged = +1;
+            if (pdgParticle->Charge() < 0.0) charged = -1;
+        }
+        else {
+            std::cout << "######################################" << std::endl;
+            std::cout << "# No Trajectory Code: " << traj->GetPDGCode()
+                      << std::endl;
+            std::cout << "######################################" << std::endl;
+        }
 
         double beta
             = traj->GetInitialMomentum().P()/traj->GetInitialMomentum().E();

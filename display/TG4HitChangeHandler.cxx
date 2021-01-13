@@ -58,13 +58,23 @@ void Cube::TG4HitChangeHandler::Apply() {
         double dEdX = energy;
         if (length>0.01) dEdX /= length;
 
+        std::string pdgName = "undefined";
+
         const TParticlePDG* pdgParticle = pdg->GetParticle(gh->GetPDG());
+        if (pdgParticle) {
+            pdgName = pdgParticle->GetName();
+        }
+        else {
+            std::cout << "######################################" << std::endl;
+            std::cout << "# Undefined PDG Code: " << gh->GetPDG() << std::endl;
+            std::cout << "######################################" << std::endl;
+        }
 
         TEveLine* eveHit = new TEveLine(2);
         std::ostringstream title;
         title << "Hit(" << gh->GetSegmentId() << ")"
               << " " << gh->GetPrimaryId()
-              << " " <<pdgParticle->GetName();
+              << " " <<pdgName;
         title << std::fixed << std::setprecision(2)
               << " " << dEdX << " MeV/mm";
         title << " for " << length << " mm";
