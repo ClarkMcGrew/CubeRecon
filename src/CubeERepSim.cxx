@@ -1,5 +1,6 @@
 #include "ERepSimInput.hxx"
 #include "CubeERepSim.hxx"
+#include "CubeUnits.hxx"
 #include "CubeInfo.hxx"
 #include "CubeG4Hit.hxx"
 #include "CubeLog.hxx"
@@ -81,6 +82,7 @@ namespace {
         wHit.SetProperty("Atten2",atten2);
         wHit.SetProperty("Reflectivity",reflect);
 #ifdef DOUBLE_CHECK_OUTPUT
+#undef DOUBLE_CHECK_OUTPUT
         CUBE_LOG(0) << "3DST Hit  "
                   << " " << wHit.GetPosition().X()
                   << " " << wHit.GetPosition().Y()
@@ -130,6 +132,54 @@ namespace {
 #ifdef  DOUBLE_CHECK_OUTPUT
 #undef  DOUBLE_CHECK_OUTPUT
         CUBE_LOG(0) << "TPC Hit  "
+                    << " " << wHit.GetPosition().X()
+                    << " " << wHit.GetPosition().Y()
+                    << " " << wHit.GetPosition().Z()
+                    << " " << wHit.GetSize().X()
+                    << " " << wHit.GetSize().Y()
+                    << " " << wHit.GetSize().Z()
+                    << " " << wHit.GetTime()
+                    << " " << wHit.GetCharge()
+                    << std::endl;
+#endif
+    }
+
+    void FillECal(Cube::Event& event, int h,
+                  Cube::WritableHit& wHit) {
+
+        double pitchX = 10.0;
+        double pitchY = 40.0*unit::mm;
+        double pitchZ = 40.0*unit::mm;
+        int id = (*ERepSim::Input::Get().HitSensorId)[h];
+        if (!Cube::Info::IsECal(id)) {
+            throw std::runtime_error("Not the ECal");
+        }
+
+        double vphoton = 17.09*unit::cm/unit::ns;
+        if (!Cube::Info::ECalEnd(id)) wHit.SetProperty("Velocity",-vphoton);
+        else wHit.SetProperty("Velocity",vphoton);
+
+        wHit.SetIdentifier(id);
+        wHit.SetPosition(
+            TVector3((*ERepSim::Input::Get().HitX)[h],
+                     (*ERepSim::Input::Get().HitY)[h],
+                     (*ERepSim::Input::Get().HitZ)[h]));
+        wHit.SetTime((*ERepSim::Input::Get().HitTime)[h]);
+        wHit.SetTimeUncertainty((*ERepSim::Input::Get().HitTimeWidth)[h]);
+        wHit.SetCharge((*ERepSim::Input::Get().HitCharge)[h]);
+        pitchX = 4*vphoton*wHit.GetTimeUncertainty();
+        TVector3 size(pitchX, pitchY, pitchZ);
+        wHit.SetUncertainty(0.289*size);
+        wHit.SetSize(0.5*size);
+        int segBegin = (*ERepSim::Input::Get().HitSegmentBegin)[h];
+        int segEnd = (*ERepSim::Input::Get().HitSegmentEnd)[h];
+        for (int seg = segBegin; seg < segEnd; ++seg) {
+            int s = (*ERepSim::Input::Get().SegmentIds)[seg];
+            wHit.AddContributor(s);
+        }
+#ifdef  DOUBLE_CHECK_OUTPUT
+#undef  DOUBLE_CHECK_OUTPUT
+        CUBE_LOG(0) << "ECAL Hit  "
                     << " " << wHit.GetPosition().X()
                     << " " << wHit.GetPosition().Y()
                     << " " << wHit.GetPosition().Z()
@@ -264,7 +314,9 @@ void Cube::ConvertERepSim(Cube::Event& event) {
     /// Get the hits out of the ERepSim trees.
     int hits3DST = 0;
     int hitsTPC = 0;
+    int hitsECal = 0;
     Cube::Handle<Cube::HitSelection> hits(new Cube::HitSelection("Raw"));
+    int hitsUnknown = 0;
     for (std::size_t h = 0;
          h < ERepSim::Input::Get().HitSensorId->size(); ++h) {
         Cube::WritableHit wHit;
@@ -278,8 +330,12 @@ void Cube::ConvertERepSim(Cube::Event& event) {
             ++hitsTPC;
             FillTPC(event,h,wHit);
         }
+        else if (Cube::Info::IsECal(id)) {
+            ++hitsECal;
+            FillECal(event,h,wHit);
+        }
         else {
-            CUBE_ERROR << "Unrecognized hit" << std::endl;
+            ++hitsUnknown;
             continue;
         }
         Cube::Handle<Cube::Hit> hit(new Cube::Hit(wHit));
@@ -288,10 +344,12 @@ void Cube::ConvertERepSim(Cube::Event& event) {
     event.AddHitSelection(hits);
 
     CUBE_LOG(0) << event.GetName() << ": " << event.GetRunId()
-              << "/" << event.GetEventId()
-              << " -- hits: " << hits->size()
-              << " 3DST: " << hits3DST
-              << " TPC: " << hitsTPC
+                << "/" << event.GetEventId()
+                << " -- hits: " << hits->size()
+                << " 3DST: " << hits3DST
+                << " TPC: " << hitsTPC
+                << " ECal: " << hitsECal
+                << " Unknown: " << hitsUnknown
               << std::endl;
 
 }

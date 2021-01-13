@@ -57,17 +57,35 @@ public:
     /// PPP          (26-24) -- The anode
     /// YYYYYYYYYYYY (23-12)  -- The TPC pad (Y)
     /// ZZZZZZZZZZZZ (11-0)   -- The TPC pad (Z)
-    //
+    ///
     static bool IsTPC(int id);
     static int TPCNumber(int id);
     static int TPCAnode(int id);
     static int TPCPadY(int id);
     static int TPCPadZ(int id);
 
+    /// @{ Return the information out of the ECal sensor id.  If the id is not
+    /// for the ecal detector, this will throw an exception.
+    ///
+    /// The ECal sensor id is DDDDDMMMMMMLLLLCCCCCCCCXXXXXXXXE
+    ///
+    /// DDDDD        (31-27) -- The subdetector (TPC == 25, 26, 27).
+    /// MMMMMM       (26-21) -- The module
+    /// LLLL         (20-17) -- The layer
+    /// CCCCCCCC     (16-9)  -- The cell
+    /// XXXXXXXX     (8-1)   -- Reserved
+    /// E            (0)     -- The end.
+    static bool IsECal(int id);
+    static int ECalModule(int id);
+    static int ECalLayer(int id);
+    static int ECalCell(int id);
+    static int ECalEnd(int id);
+    /// @}
+
     /// Return the projection for a hit based on the identifier.  The
     /// projections are X == 1 (0b001), Y == 2 (0b010), Z = 4 (0b100),
     /// YZ == 6 (0b110), XZ == 5 (0b101), XY == 3 (0b011),
-    //  or XYZ == 7 (0b111).
+    ///  or XYZ == 7 (0b111).
     enum { kXAxis = 1, kYAxis = 2, kZAxis = 4,
            kYZProj = 6, kXZProj = 5, kXYProj = 3,
            kXYZProj = 7};

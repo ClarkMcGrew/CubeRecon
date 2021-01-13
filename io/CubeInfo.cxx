@@ -78,6 +78,43 @@ int Cube::Info::TPCPadZ(int id) {
     return idz;
 }
 
+bool Cube::Info::IsECal(int id) {
+    if (Cube::Info::SubDetector(id) == 12) return true;
+    return false;
+}
+
+int Cube::Info::ECalModule(int id) {
+    if (!Cube::Info::IsECal(id)) {
+        throw std::runtime_error("Not the ECal");
+    }
+    id = (id >> 21) & 0x0000003F;
+    return id;
+}
+
+int Cube::Info::ECalLayer(int id) {
+    if (!Cube::Info::IsECal(id)) {
+        throw std::runtime_error("Not the ECal");
+    }
+    id = (id >> 17) & 0x00000F;
+    return id;
+}
+
+int Cube::Info::ECalCell(int id) {
+    if (!Cube::Info::IsECal(id)) {
+        throw std::runtime_error("Not the ECal");
+    }
+    id = (id >> 9) & 0x00000FF;
+    return id;
+}
+
+int Cube::Info::ECalEnd(int id) {
+    if (!Cube::Info::IsECal(id)) {
+        throw std::runtime_error("Not the ECal");
+    }
+    id = id & 0x00000001;
+    return id;
+}
+
 int Cube::Info::IdentifierProjection(int id) {
     int proj = 0;
     if (!Cube::Info::Is3DST(id)) return proj;
