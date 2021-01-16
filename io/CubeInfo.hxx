@@ -76,6 +76,7 @@ public:
     /// XXXXXXXX     (8-1)   -- Reserved
     /// E            (0)     -- The end.
     static bool IsECal(int id);
+    static int ECalModLayCel(int id);
     static int ECalModule(int id);
     static int ECalLayer(int id);
     static int ECalCell(int id);
