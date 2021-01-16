@@ -83,6 +83,13 @@ bool Cube::Info::IsECal(int id) {
     return false;
 }
 
+int Cube::Info::ECalModLayCel(int id) {
+    if (!Cube::Info::IsECal(id)) {
+        throw std::runtime_error("Not the ECal");
+    }
+    return id & 0xFFFFFFFE;
+}
+
 int Cube::Info::ECalModule(int id) {
     if (!Cube::Info::IsECal(id)) {
         throw std::runtime_error("Not the ECal");
