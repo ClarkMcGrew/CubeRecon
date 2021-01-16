@@ -43,6 +43,7 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
         return result;
     }
 
+    Cube::HitSelection onlyECal;
     Cube::HitSelection only3DST;
     Cube::HitSelection onlyTPC;
     for (Cube::HitSelection::iterator h = inputHits->begin();
@@ -55,16 +56,26 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
             onlyTPC.push_back((*h));
             continue;
         }
+        if (Cube::Info::IsECal((*h)->GetIdentifier())) {
+            if (Cube::Info::ECalModule((*h)->GetIdentifier()) > 29) continue;
+            onlyECal.push_back((*h));
+            continue;
+        }
     }
 
     // Create the container for the final objects.
-    Cube::Handle<ReconObjectContainer> finalObjects(
+    Cube::Handle<Cube::ReconObjectContainer> finalObjects(
         new Cube::ReconObjectContainer("final"));
+
+    // Create the output hit container
+    Cube::Handle<Cube::HitSelection> usedHits(
+        new Cube::HitSelection("used"));
+    Cube::Handle<Cube::HitSelection> unusedHits(
+        new Cube::HitSelection("unused"));
 
     if (!onlyTPC.empty()) {
         int problems = 0;
         Cube::Handle<Cube::ReconCluster> tpcCluster(new Cube::ReconCluster);
-        Cube::HitSelection tpc3D;
         for (Cube::HitSelection::iterator h = onlyTPC.begin();
              h != onlyTPC.end(); ++h) {
             if (!(*h)->HasProperty("DriftVelocity")) {
@@ -81,10 +92,76 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
             hit3d.SetPosition(pos);
             hit3d.SetTime(0.0*unit::ns);
             hit3d.AddHit(*h);
-            tpc3D.push_back(Cube::Handle<Cube::Hit>(new Cube::Hit(hit3d)));
+            usedHits->push_back(Cube::Handle<Cube::Hit>(new Cube::Hit(hit3d)));
         }
-        tpcCluster->FillFromHits("TPC",tpc3D);
-        finalObjects->push_back(tpcCluster);
+    }
+
+    if (!onlyECal.empty()) {
+        Cube::Handle<Cube::ReconCluster> ecalCluster(new Cube::ReconCluster);
+        std::map<int,Cube::HitSelection> cells;
+        std::map<Cube::Handle<Cube::Hit>,int> madeHitCount;
+        for (Cube::HitSelection::iterator h = onlyECal.begin();
+             h != onlyECal.end(); ++h) {
+            int cell = Cube::Info::ECalModLayCel((*h)->GetIdentifier());
+            cells[cell].push_back(*h);
+            madeHitCount[*h] = 0;
+        }
+        for (std::map<int,Cube::HitSelection>::iterator c = cells.begin();
+             c != cells.end(); ++c) {
+            for (Cube::HitSelection::iterator h1 = c->second.begin();
+                 h1 != c->second.end(); ++h1) {
+                for (Cube::HitSelection::iterator h2 = h1+1;
+                     h2 != c->second.end(); ++h2) {
+                    if (Cube::Info::ECalEnd((*h1)->GetIdentifier())
+                        == Cube::Info::ECalEnd((*h2)->GetIdentifier())) {
+                        continue;
+                    }
+                    if (Cube::Info::ECalModule((*h1)->GetIdentifier())
+                        != Cube::Info::ECalModule((*h2)->GetIdentifier())) {
+                        std::cout << "BAD MODULE " << std::endl;
+                    }
+                    if (Cube::Info::ECalLayer((*h1)->GetIdentifier())
+                        != Cube::Info::ECalLayer((*h2)->GetIdentifier())) {
+                        std::cout << "BAD LAYER " << std::endl;
+                    }
+                    if (Cube::Info::ECalCell((*h1)->GetIdentifier())
+                        != Cube::Info::ECalCell((*h2)->GetIdentifier())) {
+                        std::cout << "BAD LAYER " << std::endl;
+                    }
+                    double tDiff = (*h2)->GetTime() - (*h1)->GetTime();
+                    double vlight = 17.094*unit::cm/unit::ns;
+                    if (std::abs(tDiff) > 6.0*unit::meter/vlight) {
+                        continue;
+                    }
+                    TVector3 avg = 0.5*((*h2)->GetPosition()
+                                        +(*h1)->GetPosition());
+                    TVector3 dif = ((*h2)->GetPosition()
+                                    - (*h1)->GetPosition()).Unit();
+                    TVector3 pos = avg + (0.5*tDiff*vlight)*dif;
+                    Cube::WritableHit hit3d;
+                    hit3d.SetIdentifier(c->first);
+                    double q = (*h1)->GetCharge() + (*h2)->GetCharge();
+                    hit3d.SetCharge(q);
+                    hit3d.SetChargeUncertainty(std::sqrt(q));
+                    double t = 0.5*((*h1)->GetTime() + (*h2)->GetTime());
+                    hit3d.SetTime(t);
+                    hit3d.SetPosition(pos);
+                    TVector3 size(2*unit::cm,2*unit::cm,2*unit::cm);
+                    hit3d.SetUncertainty(size);
+                    hit3d.SetSize(size);
+                    hit3d.AddHit(*h1);
+                    hit3d.AddHit(*h2);
+                    ++madeHitCount[*h1];
+                    ++madeHitCount[*h2];
+                    usedHits->push_back(Cube::Handle<Cube::Hit>(
+                                            new Cube::Hit(hit3d)));
+                }
+            }
+        }
+        for (Cube::HitSelection::iterator h = onlyECal.begin();
+             h != onlyECal.end(); ++h) {
+            if (madeHitCount[*h] < 1) usedHits->push_back(*h);
+        }
     }
 
     // Slice the event up by time.
@@ -123,19 +200,69 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
                 std::copy(objects->begin(), objects->end(),
                           std::back_inserter(*finalObjects));
             }
+            Cube::Handle<Cube::HitSelection> cubes
+                = hits3D->GetHitSelection("used");
+            if (cubes) {
+                std::copy(cubes->begin(), cubes->end(),
+                          std::back_inserter(*usedHits));
+            }
+            Cube::Handle<Cube::HitSelection> fibers
+                = hits3D->GetHitSelection("unused");
+            if (fibers) {
+                std::copy(fibers->begin(), fibers->end(),
+                          std::back_inserter(*unusedHits));
+            }
             result->AddAlgorithmResult(hits3D);
         }
     }
 
-
     // Save the final objects last.
     result->AddObjectContainer(finalObjects);
 
-    // Collect all of the hits into the used and unused hit selections.
-    Cube::MakeUsed makeUsed(*inputHits);
-    result = makeUsed(result);
+    std::sort(unusedHits->begin(), unusedHits->end());
+    Cube::HitSelection::iterator end
+        = std::unique(unusedHits->begin(), unusedHits->end());
+    unusedHits->erase(end, unusedHits->end());
+    result->AddHitSelection(unusedHits);
 
-    CUBE_LOG(0) << "All done" << std::endl;
+    std::sort(usedHits->begin(), usedHits->end());
+    Cube::HitSelection::iterator end
+        = std::unique(usedHits->begin(), usedHits->end());
+    usedHits->erase(end, usedHits->end());
+    result->AddHitSelection(usedHits);
+
+    int simple3DST = 0;
+    int composite3DST = 0;
+    int simpleTPC = 0;
+    int compositeTPC = 0;
+    int simpleECal = 0;
+    int compositeECal = 0;
+    int otherHits = 0;
+    for (Cube::HitSelection::iterator h = usedHits->begin();
+         h != usedHits->end(); ++h) {
+        int id = (*h)->GetIdentifier();
+        if (Cube::Info::Is3DST(id)) {
+            if ((*h)->GetConstituentCount() < 1) ++simple3DST;
+            else ++composite3DST;
+        }
+        else if (Cube::Info::IsTPC(id)) {
+            if ((*h)->GetConstituentCount() < 1) ++simpleTPC;
+            else ++compositeTPC;
+        }
+        else if (Cube::Info::IsECal(id)) {
+            if ((*h)->GetConstituentCount() < 1) ++simpleECal;
+            else ++compositeECal;
+        }
+        else {
+            ++otherHits;
+        }
+    }
+    CUBE_LOG(0) << "MakeHits3D::Process"
+                << " 3DST: " << composite3DST << "("<< simple3DST << ")"
+                << " TPC: " << compositeTPC << "("<< simpleTPC << ")"
+                << " ECal:" << compositeECal << "("<< simpleECal << ")"
+                << " Other: " << otherHits
+                << std::endl;
     return result;
 }
 
