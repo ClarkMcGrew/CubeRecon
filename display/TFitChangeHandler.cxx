@@ -255,7 +255,7 @@ int Cube::TFitChangeHandler::ShowReconVertex(
     // Add sanity checks before drawing.
     if (std::abs(pos.X()) > 10*unit::meter
         || std::abs(pos.Y()) > 10*unit::meter
-        || std::abs(pos.Z()) > 10*unit::meter
+        || std::abs(pos.Z()) > 50*unit::meter
         || uncertainty > 10*unit::meter) {
         std::cout << "BAD VERTEX(" << obj->GetUniqueID() << "): "
                   << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
