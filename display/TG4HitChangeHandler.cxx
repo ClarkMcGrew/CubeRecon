@@ -3,6 +3,8 @@
 #include "TEventManager.hxx"
 #include "TGUIManager.hxx"
 
+#include <CubeUnits.hxx>
+
 #include <TEventManager.hxx>
 
 #include <TGButton.h>
@@ -76,7 +78,7 @@ void Cube::TG4HitChangeHandler::Apply() {
               << " " << gh->GetPrimaryId()
               << " " <<pdgName;
         title << std::fixed << std::setprecision(2)
-              << " " << dEdX << " MeV/mm";
+              << " " << dEdX/(unit::keV/unit::mm) << " keV/mm";
         title << " for " << length << " mm";
 
         eveHit->SetTitle(title.str().c_str());
