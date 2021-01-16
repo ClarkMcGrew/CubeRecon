@@ -226,8 +226,7 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
     result->AddHitSelection(unusedHits);
 
     std::sort(usedHits->begin(), usedHits->end());
-    Cube::HitSelection::iterator end
-        = std::unique(usedHits->begin(), usedHits->end());
+    end = std::unique(usedHits->begin(), usedHits->end());
     usedHits->erase(end, usedHits->end());
     result->AddHitSelection(usedHits);
 
