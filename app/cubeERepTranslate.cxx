@@ -11,6 +11,7 @@
 #include <TTree.h>
 #include <TVector3.h>
 #include <TVector.h>
+#include <TGeoManager.h>
 
 #include <iostream>
 #include <sstream>
@@ -68,6 +69,17 @@ int main(int argc, char **argv) {
     static Cube::Event *pEvent = &event;
     dataTree->Branch("Event",&pEvent);
 
+    TGeoManager* geom
+        = dynamic_cast<TGeoManager*>(inputFile->Get("EDepSimGeometry"));
+    if (!geom) {
+        geom = dynamic_cast<TGeoManager*>(inputFile->Get("CubeReconGeometry"));
+    }
+
+    if (geom && outputFile) {
+        geom->SetName("CubeReconGeometry");
+        geom->Write();
+    }
+
     totalEntries = std::min(totalEntries,maxEntries);
     for (int entry = 0; entry < totalEntries; ++entry) {
         ERepSim::Input::Get().GetEntry(entry);
@@ -80,3 +92,9 @@ int main(int argc, char **argv) {
     outputFile->Write();
 
 }
+
+// Local Variables:
+// mode:c++
+// c-basic-offset:4
+// compile-command:"$(git rev-parse --show-toplevel)/build/cube-build.sh force"
+// End:

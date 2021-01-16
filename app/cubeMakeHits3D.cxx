@@ -6,6 +6,7 @@
 #include <TVector3.h>
 #include <TVector.h>
 #include <TH1F.h>
+#include <TGeoManager.h>
 
 #include <iostream>
 #include <sstream>
@@ -68,6 +69,17 @@ int main(int argc, char **argv) {
     TTree *outputTree = new TTree("CubeEvents","Reconstructed Event");
     static Cube::Event *outputEvent = inputEvent;
     outputTree->Branch("Event",&outputEvent);
+
+    TGeoManager* geom
+        = dynamic_cast<TGeoManager*>(inputFile->Get("CubeReconGeometry"));
+    if (!geom) {
+        std::cout << "No geometry for file" << std::endl;
+    }
+
+    if (geom && outputFile) {
+        geom->SetName("CubeReconGeometry");
+        geom->Write();
+    }
 
     double maxCount = 20000.0;
     TH1F* hitCharge = new TH1F("hitCharge", "Charge of the hits",
