@@ -147,7 +147,7 @@ namespace {
     void FillECal(Cube::Event& event, int h,
                   Cube::WritableHit& wHit) {
 
-        double pitchX = 10.0;
+        double pitchX = 40.0*unit::mm;
         double pitchY = 40.0*unit::mm;
         double pitchZ = 40.0*unit::mm;
         int id = (*ERepSim::Input::Get().HitSensorId)[h];
@@ -167,7 +167,6 @@ namespace {
         wHit.SetTime((*ERepSim::Input::Get().HitTime)[h]);
         wHit.SetTimeUncertainty((*ERepSim::Input::Get().HitTimeWidth)[h]);
         wHit.SetCharge((*ERepSim::Input::Get().HitCharge)[h]);
-        pitchX = 4*vphoton*wHit.GetTimeUncertainty();
         TVector3 size(pitchX, pitchY, pitchZ);
         wHit.SetUncertainty(0.289*size);
         wHit.SetSize(0.5*size);
