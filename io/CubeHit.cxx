@@ -1,7 +1,6 @@
 #include "CubeHit.hxx"
 #include "TUnitsTable.hxx"
 
-#include <TGeoManager.h>
 #include <TROOT.h>
 
 #include <exception>

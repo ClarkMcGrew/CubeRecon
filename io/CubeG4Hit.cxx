@@ -1,4 +1,3 @@
-#include <TGeoManager.h>
 #include <TROOT.h>
 
 #include "CubeG4Hit.hxx"
