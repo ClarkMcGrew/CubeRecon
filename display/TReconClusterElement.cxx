@@ -88,7 +88,7 @@ Cube::TReconClusterElement::TReconClusterElement(Cube::ReconCluster& cluster,
     eveCluster->SetMainColor(color);
 
     bool transparentClusters = true;
-    if (transparentClusters) eveCluster->SetMainTransparency(60);
+    if (transparentClusters) eveCluster->SetMainTransparency(40);
     else eveCluster->SetMainTransparency(0);
 
     // Build the cluster title.
