@@ -146,8 +146,11 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
                     double t = 0.5*((*h1)->GetTime() + (*h2)->GetTime());
                     hit3d.SetTime(t);
                     hit3d.SetPosition(pos);
-                    TVector3 size(2*unit::cm,2*unit::cm,2*unit::cm);
-                    hit3d.SetUncertainty(size);
+                    TVector3 size(
+                        std::max((*h1)->GetSize().X(),(*h2)->GetSize().X()),
+                        std::max((*h1)->GetSize().Y(),(*h2)->GetSize().Y()),
+                        std::max((*h1)->GetSize().Z(),(*h2)->GetSize().Z()));
+                    hit3d.SetUncertainty(2.0*0.289*size);
                     hit3d.SetSize(size);
                     hit3d.AddHit(*h1);
                     hit3d.AddHit(*h2);
