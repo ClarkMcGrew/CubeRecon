@@ -147,17 +147,29 @@ namespace {
     void FillECal(Cube::Event& event, int h,
                   Cube::WritableHit& wHit) {
 
-        double pitchX = 40.0*unit::mm;
-        double pitchY = 40.0*unit::mm;
-        double pitchZ = 40.0*unit::mm;
         int id = (*ERepSim::Input::Get().HitSensorId)[h];
         if (!Cube::Info::IsECal(id)) {
             throw std::runtime_error("Not the ECal");
         }
 
+        double tWidth = (*ERepSim::Input::Get().HitTimeWidth)[h];
         double vphoton = 17.09*unit::cm/unit::ns;
+
+        double pitchX = 40.0*unit::mm;
+        double pitchY = 40.0*unit::mm;
+        double pitchZ = 40.0*unit::mm;
+
         if (!Cube::Info::ECalEnd(id)) wHit.SetProperty("Velocity",-vphoton);
         else wHit.SetProperty("Velocity",vphoton);
+
+        if (Cube::Info::ECalModule(id) < 30) {
+            // A barrel cell.
+            pitchX = vphoton*tWidth;
+        }
+        else {
+            // An endcap
+            pitchY = vphoton*tWidth;
+        }
 
         wHit.SetIdentifier(id);
         wHit.SetPosition(
@@ -165,7 +177,7 @@ namespace {
                      (*ERepSim::Input::Get().HitY)[h],
                      (*ERepSim::Input::Get().HitZ)[h]));
         wHit.SetTime((*ERepSim::Input::Get().HitTime)[h]);
-        wHit.SetTimeUncertainty((*ERepSim::Input::Get().HitTimeWidth)[h]);
+        wHit.SetTimeUncertainty(1.0*unit::ns);
         wHit.SetCharge((*ERepSim::Input::Get().HitCharge)[h]);
         TVector3 size(pitchX, pitchY, pitchZ);
         wHit.SetUncertainty(0.289*size);
