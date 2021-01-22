@@ -63,15 +63,28 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
         }
     }
 
+    CUBE_LOG(0) << "Read 3DST: " << only3DST.size()
+                << ", TPC: " << onlyTPC.size()
+                << ", ECal: " << onlyECal.size()
+                << std::endl;
+
     // Create the container for the final objects.
     Cube::Handle<Cube::ReconObjectContainer> finalObjects(
         new Cube::ReconObjectContainer("final"));
 
-    // Create the output hit container
-    Cube::Handle<Cube::HitSelection> usedHits(
-        new Cube::HitSelection("used"));
+    // Save the final objects last.
+    result->AddObjectContainer(finalObjects);
+
+    // Add a hit selection for the unused hits.  This needs to happen before
+    // the used hit selection is added.
     Cube::Handle<Cube::HitSelection> unusedHits(
         new Cube::HitSelection("unused"));
+    result->AddHitSelection(unusedHits);
+
+    // Create the hit selection for all of the used hits.
+    Cube::Handle<Cube::HitSelection> usedHits(
+        new Cube::HitSelection("used"));
+    result->AddHitSelection(usedHits);
 
     if (!onlyTPC.empty()) {
         int problems = 0;
@@ -167,36 +180,41 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
         }
     }
 
-    // Slice the event up by time.
+    // Slice the 3DST up by time.  Only fibers in the same time slice are used
+    // to build cube hits.
     Cube::Handle<Cube::AlgorithmResult> timeSlice
         = Run<Cube::TimeSlice>(only3DST);
-    if (!timeSlice) return Cube::Handle<Cube::AlgorithmResult>();
-    result->AddAlgorithmResult(timeSlice);
+    if (timeSlice) {
+        result->AddAlgorithmResult(timeSlice);
 
-    // Process each time slice as a separate cube reconstruction.
-    Cube::Handle<Cube::ReconObjectContainer> slices
-        = timeSlice->GetObjectContainer("final");
+        // Process each time slice as a separate cube reconstruction.
+        Cube::Handle<Cube::ReconObjectContainer> slices
+            = timeSlice->GetObjectContainer("final");
 
-    int count = 0;
-    for (Cube::ReconObjectContainer::iterator object = slices->begin();
-         object != slices->end(); ++object) {
-        Cube::Handle<Cube::HitSelection> hits = (*object)->GetHitSelection();
-        if (hits && !hits->empty()) {
-            // This is expecting fiber hits, so the first step is to combine
-            // them into cube hits.  Notice that since this is usually
-            // happening "out-of-band".  We need to make a local copy to allow
-            // the THitSelection to be translated into a Cube::AlgorithmResult.
+        int slice = 0;
+        for (Cube::ReconObjectContainer::iterator obj = slices->begin();
+             obj != slices->end(); ++obj) {
+            Cube::Handle<Cube::HitSelection> hits = (*obj)->GetHitSelection();
+            if (!hits) continue;
+            if (hits->empty()) continue;
+            // This is building cube hits from fiber hits.  Notice that since
+            // this is happening "out-of-band" and we need to make a local
+            // copy to allow the THitSelection to be translated into a
+            // Cube::AlgorithmResult.
             Cube::HitSelection local("fibers");
             std::copy(hits->begin(), hits->end(), std::back_inserter(local));
             Cube::Handle<Cube::AlgorithmResult> hits3D
                 = Run<Cube::Hits3D>(local);
             if (!hits3D) continue;
+            // Build the new name for the algorithm (named after the slice
+            // number.
             std::ostringstream nm;
             nm << "Slice"
                << std::setfill('0')
                << std::setw(2)
-               << count++;
+               << slice++;
             hits3D->SetName(nm.str().c_str());
+            // Copy the important information to the main result.
             Cube::Handle<Cube::ReconObjectContainer> objects
                 = hits3D->GetObjectContainer("final");
             if (objects) {
@@ -215,24 +233,22 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
                 std::copy(fibers->begin(), fibers->end(),
                           std::back_inserter(*unusedHits));
             }
+            // Save the sub result.
             result->AddAlgorithmResult(hits3D);
         }
     }
 
-    // Save the final objects last.
-    result->AddObjectContainer(finalObjects);
-
+    // Make sure the hit selections don't have duplicates
     std::sort(unusedHits->begin(), unusedHits->end());
     Cube::HitSelection::iterator end
         = std::unique(unusedHits->begin(), unusedHits->end());
     unusedHits->erase(end, unusedHits->end());
-    result->AddHitSelection(unusedHits);
 
     std::sort(usedHits->begin(), usedHits->end());
     end = std::unique(usedHits->begin(), usedHits->end());
     usedHits->erase(end, usedHits->end());
-    result->AddHitSelection(usedHits);
 
+    // Nicely count all the hits (mostly for debugging).
     int simple3DST = 0;
     int composite3DST = 0;
     int simpleTPC = 0;
@@ -260,11 +276,12 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
         }
     }
     CUBE_LOG(0) << "MakeHits3D::Process"
-                << " 3DST: " << composite3DST << "("<< simple3DST << ")"
-                << " TPC: " << compositeTPC << "("<< simpleTPC << ")"
-                << " ECal:" << compositeECal << "("<< simpleECal << ")"
+                << " 3DST: " << composite3DST << " ("<< simple3DST << ")"
+                << " TPC: " << compositeTPC << " ("<< simpleTPC << ")"
+                << " ECal:" << compositeECal << " ("<< simpleECal << ")"
                 << " Other: " << otherHits
                 << std::endl;
+
     return result;
 }
 
