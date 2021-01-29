@@ -56,6 +56,7 @@ Cube::TFitChangeHandler::~TFitChangeHandler() {
 void Cube::TFitChangeHandler::Apply() {
     fHitList->DestroyElements();
     fFitList->DestroyElements();
+    fCameraCenter = TVector3(0,0,0);
     fCameraWeight = 0.0;
 
     if (!Cube::TEventDisplay::Get().GUI().GetShowFitsButton()->IsOn()
@@ -106,16 +107,20 @@ void Cube::TFitChangeHandler::Apply() {
 
 #define SETUP_CAMERA
 #ifdef SETUP_CAMERA
-    if (fCameraWeight > 1
-        && Cube::TEventDisplay::Get().GUI()
+    if (Cube::TEventDisplay::Get().GUI()
         .GetRecalculateViewButton()->IsOn()) {
         TGLViewer* glViewer = gEve->GetDefaultGLViewer();
-        fCameraCenter *= 1.0/fCameraWeight;
         glViewer->SetDrawCameraCenter(kTRUE);
-        glViewer->CurrentCamera().SetExternalCenter(kTRUE);
-        glViewer->CurrentCamera().SetCenterVecWarp(fCameraCenter.X(),
-                                                   fCameraCenter.Y(),
-                                                   fCameraCenter.Z());
+        if (fCameraWeight > 1) {
+            fCameraCenter *= 1.0/fCameraWeight;
+            glViewer->CurrentCamera().SetExternalCenter(kTRUE);
+            glViewer->CurrentCamera().SetCenterVecWarp(fCameraCenter.X(),
+                                                       fCameraCenter.Y(),
+                                                       fCameraCenter.Z());
+        }
+        else {
+            glViewer->CurrentCamera().SetExternalCenter(kFALSE);
+        }
     }
 #endif
 
@@ -255,8 +260,8 @@ int Cube::TFitChangeHandler::ShowReconVertex(
     // Add sanity checks before drawing.
     if (std::abs(pos.X()) > 10*unit::meter
         || std::abs(pos.Y()) > 10*unit::meter
-        || std::abs(pos.Z()) > 50*unit::meter
-        || uncertainty > 10*unit::meter) {
+        || std::abs(pos.Z()) > 100*unit::meter
+        || uncertainty > 1*unit::meter) {
         std::cout << "BAD VERTEX(" << obj->GetUniqueID() << "): "
                   << unit::AsString(pos.X(),std::sqrt(var.X()),"length")
                   <<", "<<unit::AsString(pos.Y(),std::sqrt(var.Y()),"length")
