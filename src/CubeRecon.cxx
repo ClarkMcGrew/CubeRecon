@@ -7,6 +7,7 @@
 #include "CubeCompareReconObjects.hxx"
 
 #include <CubeLog.hxx>
+#include <CubeInfo.hxx>
 #include <CubeHandle.hxx>
 #include <CubeReconCluster.hxx>
 #include <CubeAlgorithmResult.hxx>
@@ -30,11 +31,9 @@ Cube::Recon::Process(const Cube::AlgorithmResult& input,
 
     // Check that we have hits!
     if (!inputHits) {
-        CUBE_ERROR << "No hits" << std::endl;
         return result;
     }
     if (inputHits->empty()) {
-        CUBE_ERROR << "Hits empty" << std::endl;
         return result;
     }
 

@@ -31,14 +31,13 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                              const Cube::AlgorithmResult&,
                              const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "Process Cube::BuildPairwiseVertices "
+    CUBE_LOG(2) << "Process Cube::BuildPairwiseVertices "
                 << GetName() <<  std::endl;
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
     Cube::Handle<Cube::ReconObjectContainer> inputObjects
         = input.GetObjectContainer();
 
     if (!inputObjects || !inputHits) {
-        CUBE_ERROR << "No input objects or hits" << std::endl;
         return Cube::Handle<Cube::AlgorithmResult>();
     }
 
@@ -79,7 +78,7 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
                                         trackMaxRequiredLength);
     }
 
-    CUBE_LOG(0) << "BuildPairwiseVertices:: Possible tracks "
+    CUBE_LOG(2) << "BuildPairwiseVertices:: Possible tracks "
                 << allTracks.size()
                 << " with required length " << fRequiredTrackLength
                 << std::endl;
@@ -105,7 +104,7 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
         }
     }
 
-    CUBE_LOG(0) << "BuildPairwiseVertices:: Have raw vertices "
+    CUBE_LOG(2) << "BuildPairwiseVertices:: Have raw vertices "
                 << allVertices.size() << std::endl;
 
     // Combine the vertices
@@ -149,7 +148,7 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
         double variance = bestVertex->GetPositionVariance().X();
         variance = std::max(bestVertex->GetPositionVariance().Y(),variance);
         variance = std::max(bestVertex->GetPositionVariance().Z(),variance);
-        CUBE_LOG(0) << "Combine vertices "
+        CUBE_LOG(2) << "Combine vertices "
                     << " T: " << bestVertex->GetConstituents()->size()
                     << " C: " << bestVertex->GetQuality()
                     << "/" << bestVertex->GetNDOF()
@@ -166,7 +165,7 @@ Cube::BuildPairwiseVertices::Process(const Cube::AlgorithmResult& input,
     std::copy(allVertices.begin(), allVertices.end(),
               std::back_inserter(*finalObjects));
 
-    CUBE_LOG(0) << "BuildPairwiseVertices:: Total vertices saved "
+    CUBE_LOG(1) << "BuildPairwiseVertices:: Total vertices saved "
                 << finalObjects->size() << std::endl;
 
     std::sort(finalObjects->begin(), finalObjects->end(),

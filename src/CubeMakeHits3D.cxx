@@ -6,7 +6,6 @@
 #include <CubeLog.hxx>
 #include <CubeHandle.hxx>
 #include <CubeAlgorithmResult.hxx>
-#include <CubeReconCluster.hxx>
 #include <CubeUnits.hxx>
 
 #include <CubeInfo.hxx>
@@ -88,7 +87,6 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
 
     if (!onlyTPC.empty()) {
         int problems = 0;
-        Cube::Handle<Cube::ReconCluster> tpcCluster(new Cube::ReconCluster);
         for (Cube::HitSelection::iterator h = onlyTPC.begin();
              h != onlyTPC.end(); ++h) {
             if (!(*h)->HasProperty("DriftVelocity")) {
@@ -110,7 +108,6 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
     }
 
     if (!onlyECal.empty()) {
-        Cube::Handle<Cube::ReconCluster> ecalCluster(new Cube::ReconCluster);
         std::map<int,Cube::HitSelection> cells;
         std::map<Cube::Handle<Cube::Hit>,int> madeHitCount;
         for (Cube::HitSelection::iterator h = onlyECal.begin();
@@ -119,6 +116,7 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
             cells[cell].push_back(*h);
             madeHitCount[*h] = 0;
         }
+        Cube::HitSelection ecal3D;
         for (std::map<int,Cube::HitSelection>::iterator c = cells.begin();
              c != cells.end(); ++c) {
             for (Cube::HitSelection::iterator h1 = c->second.begin();
@@ -169,15 +167,28 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
                     hit3d.AddHit(*h2);
                     ++madeHitCount[*h1];
                     ++madeHitCount[*h2];
-                    usedHits->push_back(Cube::Handle<Cube::Hit>(
+                    ecal3D.push_back(Cube::Handle<Cube::Hit>(
                                             new Cube::Hit(hit3d)));
                 }
             }
         }
         for (Cube::HitSelection::iterator h = onlyECal.begin();
              h != onlyECal.end(); ++h) {
-            if (madeHitCount[*h] < 1) usedHits->push_back(*h);
+            if (madeHitCount[*h] < 1) ecal3D.push_back(*h);
         }
+        Cube::Handle<Cube::AlgorithmResult> timeSliceECal
+            = Run<Cube::TimeSlice>(ecal3D);
+        if (timeSliceECal) {
+            timeSliceECal->SetName("timeSliceECal");
+            result->AddAlgorithmResult(timeSliceECal);
+            Cube::Handle<Cube::ReconObjectContainer> slices
+                = timeSliceECal->GetObjectContainer("final");
+            for (Cube::ReconObjectContainer::iterator obj = slices->begin();
+                 obj != slices->end(); ++obj) {
+                finalObjects->push_back((*obj));
+            }
+        }
+        std::copy(ecal3D.begin(),ecal3D.end(),std::back_inserter(*usedHits));
     }
 
     // Slice the 3DST up by time.  Only fibers in the same time slice are used

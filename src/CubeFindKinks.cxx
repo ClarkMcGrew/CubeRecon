@@ -26,18 +26,16 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
                          const Cube::AlgorithmResult&,
                          const Cube::AlgorithmResult&) {
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
-    CUBE_LOG(0) << "Process Cube::FindKinks" << std::endl;
+    CUBE_LOG(2) << "Process Cube::FindKinks" << std::endl;
 
     // Create the result for this algorithm.
     Cube::Handle<Cube::AlgorithmResult> result = CreateResult();
 
     // Check that we have hits!
     if (!inputHits) {
-        CUBE_ERROR << "No hits" << std::endl;
         return result;
     }
     if (inputHits->empty()) {
-        CUBE_ERROR << "Hits empty" << std::endl;
         return result;
     }
 
@@ -106,8 +104,6 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
             ++o;
             continue;
         }
-
-        // CUBE_LOG(0) << "Cube::FindKinks: Split Cluster" << std::endl;
 
         // Save the cluster to split.
         Cube::Handle<Cube::ReconCluster> splitCluster = (*o);

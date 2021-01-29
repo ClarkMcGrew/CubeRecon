@@ -29,7 +29,7 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::TimeSlice::Process(const Cube::AlgorithmResult& in,
                          const Cube::AlgorithmResult&,
                          const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "TimeSlice::Process" << std::endl;
+    CUBE_LOG(1) << "TimeSlice::Process" << std::endl;
 
     // Get the hits and check that they exist.
     Cube::Handle<Cube::HitSelection> hits = in.GetHitSelection();
@@ -60,7 +60,7 @@ Cube::TimeSlice::Process(const Cube::AlgorithmResult& in,
         ++last;
         if (last==usedHits->end()
             || ((*last)->GetTime()-(*prev)->GetTime())>fGapCut) {
-            CUBE_LOG(1) << "Time slice with " << last-first << " hits "
+            CUBE_LOG(2) << "Time slice with " << last-first << " hits "
                         << " from " << (*first)->GetTime()
                         << " to " << (*prev)->GetTime()
                         << std::endl;
@@ -75,7 +75,6 @@ Cube::TimeSlice::Process(const Cube::AlgorithmResult& in,
             first = last;
         }
     }
-
 
     return result;
 }

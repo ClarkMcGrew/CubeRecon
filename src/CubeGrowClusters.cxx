@@ -42,7 +42,7 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
                      const Cube::AlgorithmResult&,
                      const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "Process Cube::GrowClusters" << std::endl;
+    CUBE_LOG(1) << "Process Cube::GrowClusters" << std::endl;
 
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
 
@@ -51,11 +51,9 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
 
     // Check that we have hits!
     if (!inputHits) {
-        CUBE_ERROR << "No hits" << std::endl;
         return result;
     }
     if (inputHits->empty()) {
-        CUBE_ERROR << "Hits empty" << std::endl;
         return result;
     }
 
@@ -84,7 +82,7 @@ Cube::GrowClusters::Process(const Cube::AlgorithmResult& input,
     clusterList.sort(clusterSize);
     double clusterSizeCut = std::log(clusterList.size()+1.0)/2.3;
 
-    CUBE_LOG(0) << "Grow tracks from " << clusterList.size() << " clusters"
+    CUBE_LOG(2) << "Grow tracks from " << clusterList.size() << " clusters"
                 << " w/ minimum seed size of " << clusterSizeCut
                 << std::endl;
 

@@ -59,13 +59,12 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
                           const Cube::AlgorithmResult&,
                           const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "Process Cube::MergeXTalk" << std::endl;
+    CUBE_LOG(2) << "Process Cube::MergeXTalk" << std::endl;
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
     Cube::Handle<Cube::ReconObjectContainer> inputObjects
         = input.GetObjectContainer();
 
     if (!inputObjects || !inputHits) {
-        CUBE_ERROR << "No input objects or hits" << std::endl;
         return Cube::Handle<Cube::AlgorithmResult>();
     }
 
@@ -116,7 +115,7 @@ Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
         finalObjects->push_back(*t);
     }
 
-    CUBE_LOG(0) << "xtalk :: Merge the clusters" << std::endl;
+    CUBE_LOG(3) << "xtalk :: Merge the clusters" << std::endl;
     // Check each cluster to see if it is consistent with a cluster made of
     // cross talk hits.
     for (ClusterList::iterator c = clusterList.begin();
@@ -153,7 +152,7 @@ Cube::MergeXTalk::Process(const Cube::AlgorithmResult& input,
         }
     }
 
-    CUBE_LOG(0) << "xtalk: Rebuild the tracks " << allTracks.size()
+    CUBE_LOG(3) << "xtalk: Rebuild the tracks " << allTracks.size()
                 << std::endl;
 
     // Build the new tracks from the allTracks vector and add them to
