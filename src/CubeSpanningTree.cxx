@@ -2,11 +2,13 @@
 #include "CubeMakeUsed.hxx"
 #include "CubeClusterManagement.hxx"
 
+#include <CubeInfo.hxx>
 #include <CubeLog.hxx>
 #include <CubeHandle.hxx>
 #include <CubeReconCluster.hxx>
 #include <CubeAlgorithmResult.hxx>
 #include <TTmplMinimalSpanningTree.hxx>
+
 #include <set>
 
 namespace {
@@ -62,7 +64,7 @@ Cube::SpanningTree::Process(const Cube::AlgorithmResult& input,
                             const Cube::AlgorithmResult&,
                             const Cube::AlgorithmResult&) {
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
-    CUBE_LOG(0) << "Process Cube::SpanningTree" << std::endl;
+    CUBE_LOG(2) << "Process Cube::SpanningTree" << std::endl;
 
     // Create the result for this algorithm.
     Cube::Handle<Cube::AlgorithmResult> result = CreateResult();
@@ -118,7 +120,31 @@ Cube::SpanningTree::Process(const Cube::AlgorithmResult& input,
 
         if (hitSet.empty()) continue;
 
+        // Only make tracks in the tracking detectors.
+        std::size_t notTrackingHits = 0;
+        for (std::set<Cube::Handle<Cube::Hit>>::iterator h = hitSet.begin();
+             h != hitSet.end(); ++h) {
+            if (Cube::Info::IsECal((*h)->GetIdentifier())) {
+                ++notTrackingHits;
+                continue;
+            }
+        }
+        if (notTrackingHits > 0) {
+            if (notTrackingHits != hitSet.size()) {
+                CUBE_ERROR << "Hit set with mixed hit types"
+                           << std::endl;
+            }
+            Cube::Handle<Cube::ReconCluster> cluster
+                = Cube::CreateCluster("spanningNoTracks",
+                                      hitSet.begin(), hitSet.end());
+            unprocessedObjects->push_back(cluster);
+            continue;
+        }
+
+        // No really small tracks...
         if (hitSet.size() < 4) {
+            CUBE_LOG(2) << "SpanningTree:: Small cluster " << hitSet.size()
+                        << std::endl;
             Cube::Handle<Cube::ReconCluster> cluster
                 = Cube::CreateCluster("spanningTreeSmall",
                                       hitSet.begin(), hitSet.end());
@@ -126,18 +152,19 @@ Cube::SpanningTree::Process(const Cube::AlgorithmResult& input,
             continue;
         }
 
+
         if (hitSet.size() > fOversizeCut) {
             Cube::Handle<Cube::ReconCluster> cluster
                 = Cube::CreateCluster("spanningTreeLarge",
                                       hitSet.begin(), hitSet.end());
-            CUBE_LOG(0) << "SpanningTree:: Reject large cluster w/ "
+            CUBE_LOG(1) << "SpanningTree:: Reject large cluster w/ "
                         << hitSet.size() << " hits"
                         << std::endl;
             unprocessedObjects->push_back(cluster);
             continue;
         }
 
-        CUBE_LOG(0) << "SpanningTree:: Build tree w/ "
+        CUBE_LOG(2) << "SpanningTree:: Build tree w/ "
                     << hitSet.size() << " hits"
                     << std::endl;
 
