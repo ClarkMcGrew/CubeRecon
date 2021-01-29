@@ -2,6 +2,7 @@
 #include "CubeHitUtilities.hxx"
 
 #include <CubeAlgorithmResult.hxx>
+#include <CubeInfo.hxx>
 #include <CubeHitSelection.hxx>
 
 #include <algorithm>
@@ -90,9 +91,61 @@ Cube::MakeUsed::operator () (Cube::Handle<Cube::AlgorithmResult> input) {
     end = std::unique(unusedHits->begin(), unusedHits->end());
     unusedHits->erase(end, unusedHits->end());
 
+    Cube::HitSelection usedECal;
+    Cube::HitSelection used3DST;
+    Cube::HitSelection usedTPC;
+    Cube::HitSelection usedOth;
+    for (Cube::HitSelection::iterator h = usedHits->begin();
+         h != usedHits->end(); ++h) {
+        if (Cube::Info::Is3DST((*h)->GetIdentifier())) {
+            used3DST.push_back((*h));
+            continue;
+        }
+        if (Cube::Info::IsTPC((*h)->GetIdentifier())) {
+            usedTPC.push_back((*h));
+            continue;
+        }
+        if (Cube::Info::IsECal((*h)->GetIdentifier())) {
+            if (Cube::Info::ECalModule((*h)->GetIdentifier()) > 29) continue;
+            usedECal.push_back((*h));
+            continue;
+        }
+        usedOth.push_back((*h));
+    }
+
+    Cube::HitSelection unusedECal;
+    Cube::HitSelection unused3DST;
+    Cube::HitSelection unusedTPC;
+    Cube::HitSelection unusedOth;
+    for (Cube::HitSelection::iterator h = unusedHits->begin();
+         h != unusedHits->end(); ++h) {
+        if (Cube::Info::Is3DST((*h)->GetIdentifier())) {
+            unused3DST.push_back((*h));
+            continue;
+        }
+        if (Cube::Info::IsTPC((*h)->GetIdentifier())) {
+            unusedTPC.push_back((*h));
+            continue;
+        }
+        if (Cube::Info::IsECal((*h)->GetIdentifier())) {
+            if (Cube::Info::ECalModule((*h)->GetIdentifier()) > 29) continue;
+            unusedECal.push_back((*h));
+            continue;
+        }
+        unusedOth.push_back((*h));
+    }
+
     CUBE_LOG(1) << input->GetName()
                 << " -- Used Hits: " << usedHits->size()
-                << "   Unused Hits: " << unusedHits->size()
+                << " (" << used3DST.size()
+                << ", " << usedTPC.size()
+                << ", " << usedECal.size()
+                << ")"
+                << " Unused Hits: " << unusedHits->size()
+                << " (" << unused3DST.size()
+                << ", " << unusedTPC.size()
+                << ", " << unusedECal.size()
+                << ")"
                 << std::endl;;
 
     return input;
