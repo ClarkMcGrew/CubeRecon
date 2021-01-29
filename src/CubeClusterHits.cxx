@@ -42,6 +42,18 @@ namespace {
                 }
                 return dist.Mag()/10.0;
             }
+            if (Cube::Info::IsECal(lhs->GetIdentifier())
+                && Cube::Info::IsECal(rhs->GetIdentifier())) {
+                TVector3 dist
+                    = lhs->GetPosition() - rhs->GetPosition();
+                for (int i = 0; i < 3; ++i) {
+                    dist[i] = std::abs(dist[i])
+                        - lhs->GetSize()[i]
+                        - rhs->GetSize()[i];
+                    if (dist[i] < 0.0) dist[i] = 0.0;
+                }
+                return dist.Mag()/40.0;
+            }
             return 1E+20;
         }
     };
@@ -60,18 +72,16 @@ Cube::ClusterHits::Process(const Cube::AlgorithmResult& input,
                            const Cube::AlgorithmResult&,
                            const Cube::AlgorithmResult&) {
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
-    CUBE_LOG(0) << "Process Cube::ClusterHits" << std::endl;
+    CUBE_LOG(2) << "Process Cube::ClusterHits" << std::endl;
 
     // Create the result for this algorithm.
     Cube::Handle<Cube::AlgorithmResult> result = CreateResult();
 
     // Check that we have hits!
     if (!inputHits) {
-        CUBE_ERROR << "No hits" << std::endl;
         return result;
     }
     if (inputHits->empty()) {
-        CUBE_ERROR << "Hits empty" << std::endl;
         return result;
     }
 
