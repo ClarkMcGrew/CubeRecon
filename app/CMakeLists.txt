@@ -63,3 +63,10 @@ add_executable(testVertexResolution.exe testVertexResolution.cxx)
 target_link_libraries(testVertexResolution.exe LINK_PUBLIC
   cuberecon_io cuberecon_tools)
 install(TARGETS testVertexResolution.exe RUNTIME DESTINATION bin)
+
+
+# Add a test program
+add_executable(testRawHits.exe testRawHits.cxx)
+target_link_libraries(testRawHits.exe LINK_PUBLIC
+  cuberecon_io cuberecon_tools)
+install(TARGETS testRawHits.exe RUNTIME DESTINATION bin)
