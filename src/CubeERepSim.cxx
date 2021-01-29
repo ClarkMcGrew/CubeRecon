@@ -260,6 +260,27 @@ void Cube::ConvertERepSim(Cube::Event& event) {
               << " and reflectivity of " << reflect
               << std::endl;
 
+    /// Add the trajectories to the event.
+    for (int s = 0; s < ERepSim::Input::Get().TrajectoryId->size(); ++s) {
+        Cube::Handle<Cube::G4Trajectory> traj(new Cube::G4Trajectory);
+        traj->SetTrackId((*ERepSim::Input::Get().TrajectoryId)[s]);
+        traj->SetParentId((*ERepSim::Input::Get().TrajectoryParent)[s]);
+        traj->SetPDGCode((*ERepSim::Input::Get().TrajectoryPDG)[s]);
+        traj->SetInitialPosition(
+            TLorentzVector(
+                (*ERepSim::Input::Get().TrajectoryX)[s],
+                (*ERepSim::Input::Get().TrajectoryY)[s],
+                (*ERepSim::Input::Get().TrajectoryZ)[s],
+                (*ERepSim::Input::Get().TrajectoryT)[s]));
+        traj->SetInitialMomentum(
+            TLorentzVector(
+                (*ERepSim::Input::Get().TrajectoryPx)[s],
+                (*ERepSim::Input::Get().TrajectoryPy)[s],
+                (*ERepSim::Input::Get().TrajectoryPz)[s],
+                (*ERepSim::Input::Get().TrajectoryPe)[s]));
+        event.G4Trajectories[traj->GetTrackId()] = traj;
+    }
+
     int xzHits = 0;
     int yzHits = 0;
     int xyHits = 0;
@@ -275,9 +296,11 @@ void Cube::ConvertERepSim(Cube::Event& event) {
         }
         Cube::Handle<Cube::G4Hit> seg(new Cube::G4Hit);
         segmentMap[sid] = seg;
+        int trackId = (*ERepSim::Input::Get().SegmentTrackId)[s];
+        int pdg = event.G4Trajectories[trackId]->GetPDGCode();
         seg->SetSegmentId(sid);
-        seg->SetPrimaryId((*ERepSim::Input::Get().SegmentTrackId)[s]);
-        seg->SetPDG((*ERepSim::Input::Get().SegmentPDG)[s]);
+        seg->SetPrimaryId(trackId);
+        seg->SetPDG(pdg);
         seg->SetEnergyDeposit((*ERepSim::Input::Get().SegmentEnergy)[s]);
         seg->SetStart(
             TLorentzVector(
@@ -299,27 +322,6 @@ void Cube::ConvertERepSim(Cube::Event& event) {
              = segmentMap.begin();
          s != segmentMap.end(); ++s) {
         event.G4Hits[s->first] = s->second;
-    }
-
-    /// Add the trajectories to the event.
-    for (int s = 0; s < ERepSim::Input::Get().TrajectoryId->size(); ++s) {
-        Cube::Handle<Cube::G4Trajectory> traj(new Cube::G4Trajectory);
-        traj->SetTrackId((*ERepSim::Input::Get().TrajectoryId)[s]);
-        traj->SetParentId((*ERepSim::Input::Get().TrajectoryParent)[s]);
-        traj->SetPDGCode((*ERepSim::Input::Get().TrajectoryPDG)[s]);
-        traj->SetInitialPosition(
-            TLorentzVector(
-                (*ERepSim::Input::Get().TrajectoryX)[s],
-                (*ERepSim::Input::Get().TrajectoryY)[s],
-                (*ERepSim::Input::Get().TrajectoryZ)[s],
-                (*ERepSim::Input::Get().TrajectoryT)[s]));
-        traj->SetInitialMomentum(
-            TLorentzVector(
-                (*ERepSim::Input::Get().TrajectoryPx)[s],
-                (*ERepSim::Input::Get().TrajectoryPy)[s],
-                (*ERepSim::Input::Get().TrajectoryPz)[s],
-                (*ERepSim::Input::Get().TrajectoryPe)[s]));
-        event.G4Trajectories[traj->GetTrackId()] = traj;
     }
 
     /// Get the hits out of the ERepSim trees.
