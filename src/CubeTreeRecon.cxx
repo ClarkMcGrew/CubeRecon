@@ -10,6 +10,7 @@
 #include "CubeBuildPairwiseVertices.hxx"
 
 #include <CubeLog.hxx>
+#include <CubeInfo.hxx>
 #include <CubeHandle.hxx>
 #include <CubeAlgorithmResult.hxx>
 
@@ -27,7 +28,7 @@ Cube::Handle<Cube::AlgorithmResult>
 Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
                          const Cube::AlgorithmResult&,
                          const Cube::AlgorithmResult&) {
-    CUBE_LOG(0) << "Process TreeRecon" << std::endl;
+    CUBE_LOG(2) << "Process TreeRecon" << std::endl;
 
     // The input hits are assumed to come from a single time-slice, and have
     // had any ghost hit removal already done.  Every hit in the input
@@ -165,20 +166,10 @@ Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
                             finalHits->begin(),finalHits->end(),
                             std::back_inserter(needsClustering));
 
-        CUBE_LOG(0) << "Recluster " << needsClustering.size()
-                    << " = " << allHits.size()
-                    << " - " << finalHits->size()
-                    << std::endl;
-
-        // This could happen earlier, but putting it here allows a summary to
-        // be printed.
-        if (finalHits->size() < 1) break;
-        if (allHits.size() < 1) break;
-        if (needsClustering.size() < 1) break;
-
         ///////////////////////////////////////////////////////////////
         // Handle the left over hits.
         ///////////////////////////////////////////////////////////////
+        if (needsClustering.size() < 1) break;
 
         // Cluster the leftover hits.
         std::unique_ptr<Cube::ClusterHits>
