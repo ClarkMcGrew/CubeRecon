@@ -23,13 +23,11 @@ private:
           HitX(NULL), HitY(NULL), HitZ(NULL),
           HitTime(NULL), HitTimeWidth(NULL), HitCharge(NULL),
           HitSegmentBegin(NULL), HitSegmentEnd(NULL),
-          HitContribBegin(NULL), HitContribEnd(NULL),
           SegmentIds(NULL), SegmentTrackId(NULL),
           SegmentPDG(NULL), SegmentEnergy(NULL),
           SegmentX1(NULL), SegmentY1(NULL), SegmentZ1(NULL),
           SegmentX2(NULL), SegmentY2(NULL), SegmentZ2(NULL),
           SegmentT(NULL),
-          ContribIds(NULL), ContribPDG(NULL), ContribMomentum(NULL),
           TrajectoryId(NULL), TrajectoryParent(NULL), TrajectoryPDG(NULL),
           TrajectoryX(NULL), TrajectoryY(NULL), TrajectoryZ(NULL),
           TrajectoryT(NULL),
@@ -60,8 +58,6 @@ public:
     std::vector<float> *HitCharge;
     std::vector<int> *HitSegmentBegin;
     std::vector<int> *HitSegmentEnd;
-    std::vector<int> *HitContribBegin;
-    std::vector<int> *HitContribEnd;
 
     // The identifier of the hit segment.  This is also the index of the hit
     // segment in the edep-sim TG4HitSegment in the TG4HitSegmentContainer.
@@ -81,15 +77,6 @@ public:
     std::vector<float> *SegmentY2;
     std::vector<float> *SegmentZ2;
     std::vector<float> *SegmentT;
-
-    // The trajectory id for this contributor
-    std::vector<int> *ContribIds;
-    // A convenient vector of the PDG values.  The value is duplicated from
-    // TrajectoryPDG
-    std::vector<int> *ContribPDG;
-    // A convenient vector of momenta.  The value is equal to the magnitude of
-    // the TrajectoryP[xyze] vectors.
-    std::vector<float> *ContribMomentum;
 
     // The identifier for the trajectory from geant.  The value should be
     // equal to the index.
@@ -135,8 +122,6 @@ public:
             DataTree->SetBranchAddress("HitCharge",&HitCharge);
             DataTree->SetBranchAddress("HitSegmentBegin",&HitSegmentBegin);
             DataTree->SetBranchAddress("HitSegmentEnd",&HitSegmentEnd);
-            DataTree->SetBranchAddress("HitContribBegin",&HitContribBegin);
-            DataTree->SetBranchAddress("HitContribEnd",&HitContribEnd);
 
             DataTree->SetBranchAddress("SegmentIds",&SegmentIds);
             DataTree->SetBranchAddress("SegmentTrackId",&SegmentTrackId);
@@ -149,10 +134,6 @@ public:
             DataTree->SetBranchAddress("SegmentY2",&SegmentY2);
             DataTree->SetBranchAddress("SegmentZ2",&SegmentZ2);
             DataTree->SetBranchAddress("SegmentT",&SegmentT);
-
-            DataTree->SetBranchAddress("ContribIds",&ContribIds);
-            DataTree->SetBranchAddress("ContribPDG",&ContribPDG);
-            DataTree->SetBranchAddress("ContribMomentum",&ContribMomentum);
 
             DataTree->SetBranchAddress("TrajectoryId",&TrajectoryId);
             DataTree->SetBranchAddress("TrajectoryParent",&TrajectoryParent);
