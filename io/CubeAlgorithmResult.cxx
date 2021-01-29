@@ -107,10 +107,10 @@ void Cube::AlgorithmResult::AddObjectContainer(
 Cube::Handle<Cube::ReconObjectContainer>
 Cube::AlgorithmResult::GetObjectContainer(
     const char* name) const {
-    if (fObjectContainers.empty()) {
-        return Cube::Handle<Cube::ReconObjectContainer>();
-    }
     if (!name) {
+        if (fObjectContainers.empty()) {
+            return Cube::Handle<Cube::ReconObjectContainer>();
+        }
         return fObjectContainers.back();
     }
     std::string searchName(name);
