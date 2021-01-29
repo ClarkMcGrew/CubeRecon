@@ -4,6 +4,7 @@
 
 #include <CubeAlgorithmResult.hxx>
 #include <CubeLog.hxx>
+#include <CubeInfo.hxx>
 #include <CubeHandle.hxx>
 #include <CubeHit.hxx>
 #include <CubeHitSelection.hxx>
@@ -33,6 +34,7 @@ Cube::CleanHits::Process(const Cube::AlgorithmResult& input,
         return result;
     }
 
+    // Create the containers for the final objects and hits.
     Cube::Handle<Cube::HitSelection> unusedHits(
         new Cube::HitSelection("unused"));
     result->AddHitSelection(unusedHits);
@@ -44,12 +46,14 @@ Cube::CleanHits::Process(const Cube::AlgorithmResult& input,
     // The input hits possibly a include mix of simple and composite hits.
     for (Cube::HitSelection::iterator hit = inputHits->begin();
          hit != inputHits->end(); ++hit) {
-        if ((*hit)->GetCharge() < fGhostHitThreshold) {
+        if (Cube::Info::Is3DST((*hit)->GetIdentifier())
+            && (*hit)->GetCharge() < fGhostHitThreshold) {
             unusedHits->push_back(*hit);
             continue;
         }
         usedHits->push_back(*hit);
     }
+
     CUBE_LOG(0) << "CleanHits: Hits rejected " << unusedHits->size()
                 << " leaving " << usedHits->size() << " hits" << std::endl;
 
