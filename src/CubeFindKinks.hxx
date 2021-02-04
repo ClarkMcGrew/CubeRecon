@@ -35,6 +35,10 @@ public:
 
     void SetScanLength(int i) {fScanLength = i;}
 
+    void SetMinimumScanLength(int i) {
+        fMinimumScanLength = i;
+    }
+
     void SetKinkThreshold(double t) {fKinkThreshold = t;}
 
     void SetLengthFraction(double t) {fLengthFraction = t;}
@@ -42,6 +46,10 @@ public:
 private:
     // The length to be scanned for a kink.
     int fScanLength;
+
+    // The minimum  number of hits  in the  scan window.  This  determines the
+    // shortest possible cluster.
+    int fMinimumScanLength;
 
     // The maximum distance from the end-point connecting line for an interior
     // it before there is a kink.

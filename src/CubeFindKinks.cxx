@@ -15,6 +15,8 @@ Cube::FindKinks::FindKinks()
 
     fScanLength = 7;
 
+    fMinimumScanLength = 4;
+
     fKinkThreshold = 1.7*unit::cm;
 
     fLengthFraction = 0.6;
@@ -26,7 +28,7 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
                          const Cube::AlgorithmResult&,
                          const Cube::AlgorithmResult&) {
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
-    CUBE_LOG(2) << "Process Cube::FindKinks" << std::endl;
+    CUBE_LOG(2) << "Cube::FindKinks Process" << std::endl;
 
     // Create the result for this algorithm.
     Cube::Handle<Cube::AlgorithmResult> result = CreateResult();
@@ -37,6 +39,11 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
     }
     if (inputHits->empty()) {
         return result;
+    }
+
+    // Sanity check
+    if (fScanLength < fMinimumScanLength) {
+        fScanLength = fMinimumScanLength;
     }
 
     // Create the container for the final objects.
@@ -62,6 +69,7 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
         clusterList.push_back((*o));
     }
 
+    int splits = 0;
     // Check if the clusters should be split.
     for (std::list<Cube::Handle<Cube::ReconCluster>>::iterator
              o = clusterList.begin(); o != clusterList.end();) {
@@ -70,7 +78,7 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
             Cube::Handle<Cube::HitSelection> hits = (*o)->GetHitSelection();
             int scanLength = fScanLength;
             if (hits->size() < scanLength) scanLength = hits->size();
-            if (scanLength < 4) break;
+            if (scanLength < fMinimumScanLength) break;
             double length = (hits->front()->GetPosition()
                              - hits->back()->GetPosition()).Mag();
             int trialSplit = -1;
@@ -105,6 +113,7 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
             continue;
         }
 
+        ++splits;
         // Save the cluster to split.
         Cube::Handle<Cube::ReconCluster> splitCluster = (*o);
         Cube::Handle<Cube::HitSelection> splitHits
@@ -134,6 +143,8 @@ Cube::FindKinks::Process(const Cube::AlgorithmResult& input,
          o != clusterList.end(); ++o) {
         finalObjects->push_back(*o);
     }
+
+    CUBE_LOG(1) << "Cube::FindKinks splits " << splits << std::endl;
 
     // Build the hit selections.
     Cube::MakeUsed makeUsed(*inputHits);
