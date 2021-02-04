@@ -296,11 +296,28 @@ void Cube::ConvertERepSim(Cube::Event& event) {
         }
         Cube::Handle<Cube::G4Hit> seg(new Cube::G4Hit);
         segmentMap[sid] = seg;
-        int trackId = (*ERepSim::Input::Get().SegmentTrackId)[s];
-        int pdg = event.G4Trajectories[trackId]->GetPDGCode();
         seg->SetSegmentId(sid);
-        seg->SetPrimaryId(trackId);
-        seg->SetPDG(pdg);
+        int trackId = (*ERepSim::Input::Get().SegmentTrackId)[s];
+        Cube::Event::G4TrajectoryContainer::iterator traj
+            = event.G4Trajectories.find(trackId);
+        if (traj != event.G4Trajectories.end()) {
+            int pdg = 0;
+            if (traj->second) {
+                pdg = traj->second->GetPDGCode();
+            }
+            else {
+                CUBE_ERROR << "Trajectory id without a trajectory pointer."
+                           << trackId
+                           << std::endl;
+            }
+            seg->SetPrimaryId(trackId);
+            seg->SetPDG(pdg);
+        }
+        else {
+            CUBE_ERROR << "Segment for non existing trajectory id: "
+                       << trackId
+                       << std::endl;
+        }
         seg->SetEnergyDeposit((*ERepSim::Input::Get().SegmentEnergy)[s]);
         seg->SetStart(
             TLorentzVector(
