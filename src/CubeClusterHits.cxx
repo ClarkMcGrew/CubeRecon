@@ -20,20 +20,24 @@ namespace {
                 && Cube::Info::Is3DST(rhs->GetIdentifier())) {
                 double dx = Cube::Info::CubeNumber(lhs->GetIdentifier())
                     - Cube::Info::CubeNumber(rhs->GetIdentifier());
-
                 double dy = Cube::Info::CubeBar(lhs->GetIdentifier())
                     - Cube::Info::CubeBar(rhs->GetIdentifier());
-
                 double dz = Cube::Info::CubePlane(lhs->GetIdentifier())
                     - Cube::Info::CubePlane(rhs->GetIdentifier());
-
                 double d = std::max(std::abs(dx), std::abs(dy));
                 return std::max(d,std::abs(dz));
             }
             if (Cube::Info::IsTPC(lhs->GetIdentifier())
                 && Cube::Info::IsTPC(rhs->GetIdentifier())) {
-                TVector3 dist
-                    = lhs->GetPosition() - rhs->GetPosition();
+                if (Cube::Info::TPCNumber(lhs->GetIdentifier())
+                    != Cube::Info::TPCNumber(rhs->GetIdentifier())) {
+                    return 1E+20;
+                }
+                if (Cube::Info::TPCAnode(lhs->GetIdentifier())
+                    != Cube::Info::TPCAnode(rhs->GetIdentifier())) {
+                    return 1E+20;
+                }
+                TVector3 dist = lhs->GetPosition() - rhs->GetPosition();
                 for (int i = 0; i < 3; ++i) {
                     dist[i] = std::abs(dist[i])
                         - lhs->GetSize()[i]
@@ -44,8 +48,7 @@ namespace {
             }
             if (Cube::Info::IsECal(lhs->GetIdentifier())
                 && Cube::Info::IsECal(rhs->GetIdentifier())) {
-                TVector3 dist
-                    = lhs->GetPosition() - rhs->GetPosition();
+                TVector3 dist = lhs->GetPosition() - rhs->GetPosition();
                 for (int i = 0; i < 3; ++i) {
                     dist[i] = std::abs(dist[i])
                         - lhs->GetSize()[i]
