@@ -16,7 +16,7 @@
 #include <iomanip>
 
 Cube::Recon::Recon(): Cube::Algorithm("CubeRecon") {
-    fOversizeCut = 10000;
+    fOversizeCut = 20000;
 }
 
 Cube::Handle<Cube::AlgorithmResult>
