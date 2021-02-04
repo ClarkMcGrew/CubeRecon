@@ -54,6 +54,15 @@ Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
         return result;
     }
 
+    // Check if this is for the tpc.
+    bool isTPC = false;
+    for (Cube::HitSelection::iterator h = inputHits->begin();
+         h != inputHits->end(); ++h) {
+        if (!Cube::Info::IsTPC((*h)->GetIdentifier())) continue;
+        isTPC = true;
+        break;
+    }
+
     // Create the container for the final objects.
     Cube::Handle<Cube::ReconObjectContainer>
         finalObjects(new Cube::ReconObjectContainer("final"));
@@ -77,9 +86,16 @@ Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
         currentResult = spanningTree;
         result->AddAlgorithmResult(currentResult);
 
-        // Further break the clusters based on kinks.
-        Cube::Handle<Cube::AlgorithmResult> findKinks
-            = Run<Cube::FindKinks>(*currentResult);
+        Cube::Handle<Cube::AlgorithmResult> findKinks;
+        if (!isTPC)
+            findKinks = Run<Cube::FindKinks>(*currentResult);
+        else {
+            // Further break the clusters based on kinks.
+            std::unique_ptr<Cube::FindKinks> ptr(new Cube::FindKinks);
+            ptr->SetScanLength(50);
+            ptr->SetMinimumScanLength(30);
+            findKinks = ptr->Process(*currentResult);
+        }
         if (!findKinks) break;
         currentResult = findKinks;
         result->AddAlgorithmResult(currentResult);
