@@ -143,16 +143,18 @@ Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
     }
 
     // Now build vertices.  This should be after all of the tracks and showers
-    // are built.
-    Cube::Handle<Cube::AlgorithmResult> buildVertices
-        = Run<Cube::BuildPairwiseVertices>(*currentResult);
-    currentResult = buildVertices;
-    if (currentResult) {
-        result->AddAlgorithmResult(currentResult);
-        Cube::Handle<Cube::ReconObjectContainer> objects
-            = currentResult->GetObjectContainer("final");
-        std::copy(objects->begin(), objects->end(),
-                  std::back_inserter(*finalObjects));
+    // are built.   The tracks in the TPC are not included.
+    if (!isTPC) {
+        Cube::Handle<Cube::AlgorithmResult> buildVertices
+            = Run<Cube::BuildPairwiseVertices>(*currentResult);
+        currentResult = buildVertices;
+        if (currentResult) {
+            result->AddAlgorithmResult(currentResult);
+            Cube::Handle<Cube::ReconObjectContainer> objects
+                = currentResult->GetObjectContainer("final");
+            std::copy(objects->begin(), objects->end(),
+                      std::back_inserter(*finalObjects));
+        }
     }
 
     /// Apply a backstop algorithm for any hits that didn't make into the
