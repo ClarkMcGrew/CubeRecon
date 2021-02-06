@@ -66,9 +66,16 @@ public:
     /// to get some of the important truth information needed to debug the
     /// reconstruction.
     ////////////////////////////////////////////////////////////////////////
+
+    /// All of the TG4HitSegments in the event.  The index is the segment id,
+    /// which is a unique (and fairly arbitrary) value for each segment.  The
+    /// value is the actual hit segment.  The segment id can be "mostly"
+    /// ignored.
     typedef std::map<int,Cube::Handle<Cube::G4Hit>> G4HitContainer;
     G4HitContainer G4Hits;
 
+    /// All of the trajectory information.  The index is the trajectory
+    /// identifier so that you can easily find a trajectory.
     typedef std::map<int,Cube::Handle<Cube::G4Trajectory>>
     G4TrajectoryContainer;
     G4TrajectoryContainer G4Trajectories;
