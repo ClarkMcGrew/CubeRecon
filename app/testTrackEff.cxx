@@ -6,6 +6,7 @@
 #include <CubeReconCluster.hxx>
 #include <CubeHit.hxx>
 #include <CubeInfo.hxx>
+#include <CubeUnits.hxx>
 
 #include <ToolPrimaryId.hxx>
 #include <ToolG4Hits.hxx>
@@ -59,12 +60,26 @@ TH2F* histPrimPionDir = NULL;
 TH2F* histRecoPionDir = NULL;
 TH2F* histEffPionDir = NULL;
 
+TH1F* histPositionX = NULL;
+TH1F* histPositionY = NULL;
+TH1F* histPositionZ = NULL;
+
 /// Filter through tracks, and assign them to trajectories.  Then check the
 /// timing to see if it properly tags the track direction.
 bool AnalyzeEvent(Cube::Event& event) {
+    const double fidDist = 25*unit::cm;
 
     if (!histInitialized) {
         histInitialized = true;
+        histPositionX = new TH1F("positionX",
+                                 "Trajectory X Position",
+                                 400, -2000.0, 2000.0);
+        histPositionY = new TH1F("positionY",
+                                 "Trajectory Y Position",
+                                 1000, -5000.0, 0.0);
+        histPositionZ = new TH1F("positionZ",
+                                 "Trajectory Z Position",
+                                 1000, 20000.0, 50000.0);
         histPrimMuonMomentum = new TH1F("primMuonMomentum",
                                        "True Momentum of Muon",
                                        50,0.0,500.0);
@@ -176,6 +191,8 @@ bool AnalyzeEvent(Cube::Event& event) {
                                    10,0.0,1.0);
     }
 
+    int muonFound = 0;
+
     // Make sure that the tracks are in the "fiducial", and not going in
     // opposite directions.
     std::vector<TVector3> directions;
@@ -184,9 +201,15 @@ bool AnalyzeEvent(Cube::Event& event) {
          tr != trajectories.end(); ++tr) {
         // only count primaries.
         if (tr->second->GetParentId() >= 0) continue;
-        double fid= Cube::Tool::ContainedPoint(
-            tr->second->GetInitialPosition().Vect());
-        if (fid < 50.0) return false;
+        TVector3 pnt = tr->second->GetInitialPosition().Vect();
+        histPositionX->Fill(pnt.X());
+        histPositionY->Fill(pnt.Y());
+        histPositionZ->Fill(pnt.Z());
+        double fid= Cube::Tool::ContainedPoint(pnt);
+        if (fid < fidDist) {
+            std::cout << "Trajectory out of fiducial " << fid << std::endl;
+            return false;
+        }
         directions.push_back(tr->second->GetInitialMomentum().Vect().Unit());
     }
 
@@ -196,11 +219,15 @@ bool AnalyzeEvent(Cube::Event& event) {
         if (tr->second->GetParentId() >= 0) continue;
         double fid= Cube::Tool::ContainedPoint(
             tr->second->GetInitialPosition().Vect());
-        if (fid < 50.0) return false;
+        if (fid < fidDist) {
+            std::cout << "Count out of fiducial " << fid << std::endl;
+            return false;
+        }
         int trackId = tr->second->GetTrackId();
         int pdgCode = std::abs(tr->second->GetPDGCode());
         std::vector<Cube::Handle<Cube::G4Hit>> segments
             = Cube::Tool::TrajectoryG4Hits(event,trackId);
+        if (segments.empty()) continue;
         TVector3 head = segments.front()->GetStart().Vect();
         TVector3 tail = segments.back()->GetStop().Vect();
         double len = (tail-head).Mag();
@@ -217,6 +244,7 @@ bool AnalyzeEvent(Cube::Event& event) {
         int pdgMuon = 13;
         if (pdgCode == pdgMuon) {
             if (dCos < 0.9 && dCos > -0.50) {
+                muonFound += 10;
                 histPrimMuonLength->Fill(len);
                 histPrimMuonMomLen->Fill(mom,len);
                 histPrimMuonMomentum->Fill(mom);
@@ -245,7 +273,10 @@ bool AnalyzeEvent(Cube::Event& event) {
 
     Cube::Handle<Cube::ReconObjectContainer> objects
         = event.GetObjectContainer();
-    if (!objects) return false;
+    if (!objects) {
+        std::cout << "No reconstruction objects" << std::endl;
+        return false;
+    }
 
     int pdgMuon = 13;
     int pdgProton = 2212;
@@ -254,21 +285,28 @@ bool AnalyzeEvent(Cube::Event& event) {
          o != objects->end(); ++o) {
         Cube::Handle<Cube::ReconTrack> track = *o;
         if (!track) continue;
+        // Check that the hits are in the 3DST.
+        Cube::Handle<Cube::HitSelection> hits = track->GetHitSelection();
+        if (hits->empty()) continue;
+        if (!Cube::Info::Is3DST(hits->front()->GetIdentifier())) continue;
         int mainTraj = Cube::Tool::MainTrajectory(event,*track);
-        if (mainTraj<0) continue;
+        if (mainTraj<0) {
+            continue;
+        }
         // Reject tracks from secondary particles.
         int primTraj = Cube::Tool::PrimaryId(event,mainTraj);
-        if (primTraj != mainTraj) continue;
+        if (primTraj != mainTraj) {
+            continue;
+        }
         // Get the trajectory and check the fiducial for the starting point.
         Cube::Handle<Cube::G4Trajectory> traj = trajectories[primTraj];
         if (!traj) throw;
-        double fid= Cube::Tool::ContainedPoint(
-            traj->GetInitialPosition().Vect());
         // Get the trajectory information for convenience.
         int trackId = traj->GetTrackId();
         int pdgCode = std::abs(traj->GetPDGCode());
         std::vector<Cube::Handle<Cube::G4Hit>> segments
             = Cube::Tool::TrajectoryG4Hits(event,trackId);
+        if (segments.empty()) continue;
         TVector3 head = segments.front()->GetStart().Vect();
         TVector3 tail = segments.back()->GetStop().Vect();
         double len = (tail-head).Mag();
@@ -288,6 +326,7 @@ bool AnalyzeEvent(Cube::Event& event) {
         // Collect the info for the muon, pion and proton.
         if (pdgCode == pdgMuon) {
             if (dCos < 0.9 && dCos > -0.50) {
+                muonFound += 1000;
                 histRecoMuonMomentum->Fill(mom);
                 histRecoMuonDir->Fill(mom,std::abs(dir.Z()));
                 histRecoMuonLength->Fill(len);
@@ -314,6 +353,11 @@ bool AnalyzeEvent(Cube::Event& event) {
             }
             pdgPion = -1;
         }
+    }
+
+    if (muonFound > 0 && muonFound < 1000) {
+        std::cout << "Save bad reco" << std::endl;
+        return true;
     }
 
     return false;
@@ -393,13 +437,15 @@ int main(int argc, char** argv) {
     // Loop through the events.
     int totalEntries = inputChain->GetEntries();
     totalEntries = std::min(totalEntries,firstEntry+maxEntries);
+    std::cout << firstEntry << " " << maxEntries << " "  << totalEntries << std::endl;
     for (int entry = firstEntry; entry < totalEntries; ++entry) {
         inputChain->GetEntry(entry);
         outputEvent = inputEvent;
         std::cout << "Process event "
                   << entry
                   << "/" << inputEvent->GetRunId()
-                  << "/" << inputEvent->GetEventId() << std::endl;
+                  << "/" << inputEvent->GetEventId()
+                  << " out of " << totalEntries << std::endl;
         bool save = AnalyzeEvent(*inputEvent);
         if (save) outputTree->Fill();
     }
