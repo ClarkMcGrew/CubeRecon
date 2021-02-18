@@ -41,8 +41,23 @@ int Cube::Info::CubePlane(int id) {
 }
 
 bool Cube::Info::IsTPC(int id) {
+    if (Cube::Info::IsDownstreamTPC(id)) return true;
+    if (Cube::Info::IsTopTPC(id)) return true;
+    if (Cube::Info::IsBottomTPC(id)) return true;
+    return false;
+}
+
+bool Cube::Info::IsDownstreamTPC(int id) {
     if (Cube::Info::SubDetector(id) == 25) return true;
+    return false;
+}
+
+bool Cube::Info::IsTopTPC(int id) {
     if (Cube::Info::SubDetector(id) == 26) return true;
+    return false;
+}
+
+bool Cube::Info::IsBottomTPC(int id) {
     if (Cube::Info::SubDetector(id) == 27) return true;
     return false;
 }

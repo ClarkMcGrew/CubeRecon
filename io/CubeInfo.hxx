@@ -42,27 +42,33 @@ public:
     /// @}
 
 
-    /// @{ Return the number of the TPC anode (left or right) and pad (Y and
-    /// Z) based on the sensor id.  If the id is not for the cube detector,
-    /// this will throw an exception.  If the id is for a sensor, then the two
-    /// relevant axis will be positive, and the sensor axis is -1.  If this is
-    /// expanded for double ended readout, the "far" sensor will be "-2".  The
-    /// "number" increments along the "X" axis.  The "bar" increments along
-    /// the "Y" axis.  The "plane" increments along the "Z" axis.  The 3DST
-    /// bit definitions are
+    /// @{ Return information about the TPC id.  IsTPC is true if the hit is
+    /// for any of the TPCs.  The TPC identifiers are 25 for the downstream,
+    /// 26 for the top, and 27 for the bottom.  The anode is 0 for the
+    /// "negative" X, and 1 for the "positive" X.
     ///
     /// The TPC sensor id is DDDDDPPPYYYYYYYYYYYYZZZZZZZZZZZZ
     ///
-    /// DDDDD        (31-27) -- The subdetector (TPC == 25, 26, 27).
+    /// DDDDD        (31-27) -- The subdetector (TPC == ds 25, top 26, bot 27).
     /// PPP          (26-24) -- The anode
     /// YYYYYYYYYYYY (23-12)  -- The TPC pad (Y)
     /// ZZZZZZZZZZZZ (11-0)   -- The TPC pad (Z)
     ///
+    /// The TPC Ids are 25 for downsream, 26 for top, and 27 for bottom
+    ///
+    /// TPC Number is 0 for downstream, 1 for top, and 2 for bottom.
+    ///
+    /// TPC Anode is 0 for minimum X, and 1 for maximum X
+    ///
     static bool IsTPC(int id);
+    static bool IsDownstreamTPC(int id);
+    static bool IsTopTPC(int id);
+    static bool IsBottomTPC(int id);
     static int TPCNumber(int id);
     static int TPCAnode(int id);
     static int TPCPadY(int id);
     static int TPCPadZ(int id);
+    /// @}
 
     /// @{ Return the information out of the ECal sensor id.  If the id is not
     /// for the ecal detector, this will throw an exception.
