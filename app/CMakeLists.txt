@@ -53,10 +53,10 @@ target_link_libraries(testTrackEff.exe LINK_PUBLIC
 install(TARGETS testTrackEff.exe RUNTIME DESTINATION bin)
 
 # Add a test program
-add_executable(testCC0Pi.exe testCC0Pi.cxx)
-target_link_libraries(testCC0Pi.exe LINK_PUBLIC
+add_executable(testCC0PiTimes.exe testCC0PiTimes.cxx)
+target_link_libraries(testCC0PiTimes.exe LINK_PUBLIC
   cuberecon_io cuberecon_tools ${ROOT_LIBRARIES} )
-install(TARGETS testCC0Pi.exe RUNTIME DESTINATION bin)
+install(TARGETS testCC0PiTimes.exe RUNTIME DESTINATION bin)
 
 # Add a test program
 add_executable(testVertexResolution.exe testVertexResolution.cxx)
