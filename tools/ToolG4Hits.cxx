@@ -1,4 +1,5 @@
 #include <ToolG4Hits.hxx>
+#include <ToolInternal.hxx>
 
 #include <CubeInfo.hxx>
 

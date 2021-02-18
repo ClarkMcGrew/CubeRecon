@@ -35,7 +35,7 @@ set(includes
   CubeReconShower.hxx CubeReconTrack.hxx
   CubeAlgorithm.hxx CubeAlgorithmResult.hxx
   CubeG4Hit.hxx CubeG4Trajectory.hxx
-  TUnitsTable.hxx
+  TUnitsTable.hxx CubeRecurseGeometry.hxx
   )
 
 # Make sure the current directories are available for the later

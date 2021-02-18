@@ -1,10 +1,12 @@
 #include "ToolContained.hxx"
+#include "ToolInternal.hxx"
 
 #include <CubeEvent.hxx>
 #include <CubeReconObject.hxx>
 #include <CubeHit.hxx>
 #include <CubeHandle.hxx>
 #include <CubeInfo.hxx>
+#include <CubeUnits.hxx>
 
 #include <TVector3.h>
 
@@ -18,12 +20,9 @@ int Cube::Tool::ContainedHit(Cube::Hit& hit) {
     int low = std::min(std::min(num,bar),pln);
     // This should be carried in the data, but for now will need to be hard
     // coded.
-    int maxNum = 252;
-    int maxBar = 236;
-    int maxPln = 200;
-    int hiNum = maxNum - num - 1;
-    int hiBar = maxBar - bar - 1;
-    int hiPln = maxPln - pln - 1;
+    int hiNum = Cube::Tool::Internal::g3DSTCubes - num - 1;
+    int hiBar = Cube::Tool::Internal::g3DSTBars - bar - 1;
+    int hiPln = Cube::Tool::Internal::g3DSTPlanes - pln - 1;
     int hi = std::min(std::min(hiNum,hiBar),hiPln);
     if (low < 0) return 0;
     if (hi < 0) return 0;
@@ -43,18 +42,15 @@ int Cube::Tool::ContainedObject(Cube::ReconObject& object) {
     return minDist;
 }
 
+// Return the distance inside of the 3DST.
 double Cube::Tool::ContainedPoint(TVector3 point) {
-    double minDist = 1E+10;
-    double xBoundary = 1260.0;
-    minDist = std::min(xBoundary-point.X(),minDist);
-    minDist = std::min(point.X()+xBoundary,minDist);
-    double yBoundary = 1180;
-    minDist = std::min(yBoundary-point.Y(),minDist);
-    minDist = std::min(point.Y()+yBoundary,minDist);
-    double zMin = 3510.0;
-    double zMax = 5510.0;
-    minDist = std::min(zMax-point.Z(),minDist);
-    minDist = std::min(point.Z()-zMin,minDist);
+    double minDist = 1E+20;
+    minDist = std::min(point.X()-Cube::Tool::Internal::g3DSTCubeMin,minDist);
+    minDist = std::min(point.Y()-Cube::Tool::Internal::g3DSTBarMin,minDist);
+    minDist = std::min(point.Z()-Cube::Tool::Internal::g3DSTPlaneMin,minDist);
+    minDist = std::min(Cube::Tool::Internal::g3DSTCubeMax-point.X(),minDist);
+    minDist = std::min(Cube::Tool::Internal::g3DSTBarMax-point.Y(),minDist);
+    minDist = std::min(Cube::Tool::Internal::g3DSTPlaneMax-point.Z(),minDist);
     return minDist;
 }
 
