@@ -7,17 +7,22 @@
 
 namespace Cube {
     namespace Tool {
-        // Return a positive integer if the hit is contained (i.e. not on the
-        // edge), otherwise zero.  This is the number of cubes the current hit
-        // is from the edge of the detector.
+        // Find the distance between two reconstruction objects.  This will be
+        // the distance between the two closest hits in the objects.
         double DistanceBetweenObjects(Cube::ReconObject& obj1,
                                       Cube::ReconObject& obj2);
 
-        // Return a positive integer if the object is contained, otherwise,
-        // return zero.
+        // Return true if the objects are neighboring.  They are neighboring
+        // if the distance between is less than the third parameter (default
+        // is 4cm).
         bool AreNeighboringObjects(Cube::ReconObject& obj1,
                                    Cube::ReconObject& obj2,
                                    double dist = 4.0*unit::cm);
+
+        // Return the names of the detectors that contain the object.  This is
+        // based on the hits are in the object.
+        std::string ObjectDetectors(Cube::ReconObject& obj);
+
     }
 }
 #endif

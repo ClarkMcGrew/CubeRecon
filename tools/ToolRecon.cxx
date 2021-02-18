@@ -3,6 +3,7 @@
 #include <CubeHandle.hxx>
 #include <CubeHitSelection.hxx>
 #include <CubeHit.hxx>
+#include <CubeInfo.hxx>
 
 double Cube::Tool::DistanceBetweenObjects(Cube::ReconObject& obj1,
                                           Cube::ReconObject& obj2) {
@@ -28,6 +29,52 @@ bool Cube::Tool::AreNeighboringObjects(Cube::ReconObject& obj1,
                                        double dist) {
     double d = DistanceBetweenObjects(obj1,obj2);
     return (d < dist);
+}
+
+std::string Cube::Tool::ObjectDetectors(Cube::ReconObject& obj) {
+    std::string result;
+    Cube::Handle<Cube::HitSelection> hits = obj.GetHitSelection();
+    bool has3DST = false;
+    bool hasDSTPC = false;
+    bool hasTopTPC = false;
+    bool hasBotTPC = false;
+    bool hasECal = false;
+    for (Cube::HitSelection::iterator h = hits->begin();
+         h != hits->end(); ++h) {
+        if (Cube::Info::Is3DST((*h)->GetIdentifier())) {
+            has3DST = true;
+        }
+        else if (Cube::Info::IsDownstreamTPC((*h)->GetIdentifier())) {
+            hasDSTPC = true;
+        }
+        else if (Cube::Info::IsTopTPC((*h)->GetIdentifier())) {
+            hasTopTPC = true;
+        }
+        else if (Cube::Info::IsBottomTPC((*h)->GetIdentifier())) {
+            hasBotTPC = true;
+        }
+        else if (Cube::Info::IsECal((*h)->GetIdentifier())) {
+            hasECal = true;
+        }
+    }
+    result = ":";
+    if (has3DST) {
+        result += "3DST:";
+    }
+    if (hasDSTPC) {
+        result += "TPC-Downstream:";
+    }
+    if (hasTopTPC) {
+        result += "TPC-Top:";
+    }
+    if (hasBotTPC) {
+        result += "TPC-Bottom:";
+    }
+    if (hasECal) {
+        result += "ECal:";
+    }
+
+    return result;
 }
 
 // Local Variables:
