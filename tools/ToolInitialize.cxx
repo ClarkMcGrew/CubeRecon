@@ -60,15 +60,15 @@ namespace {
                     = std::max(Cube::Tool::Internal::g3DSTCubeMax,master[0]);
             }
 
-            // Sort circuit.  Only look at the daughters for the "_0"
+            // Short circuit.  Only look at the daughters for the "_0"
             // plane and bar.
             if (name.find("3DSTPlane_PV") != std::string::npos
-                && name.find("3DSTPlane_PV_0") == std::string::npos) {
+                && name.find("_0") == std::string::npos) {
                 return false;
             }
 
             if (name.find("3DSTBar_PV") != std::string::npos
-                && name.find("3DSTBar_PV_0") == std::string::npos) {
+                && name.find("_0") == std::string::npos) {
                 return false;
             }
 
