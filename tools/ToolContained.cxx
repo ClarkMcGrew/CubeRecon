@@ -1,4 +1,5 @@
 #include "ToolContained.hxx"
+#include "ToolInitialize.hxx"
 #include "ToolInternal.hxx"
 
 #include <CubeEvent.hxx>
@@ -20,6 +21,7 @@ int Cube::Tool::ContainedHit(Cube::Hit& hit) {
     int low = std::min(std::min(num,bar),pln);
     // This should be carried in the data, but for now will need to be hard
     // coded.
+    Cube::Tool::Initialize();
     int hiNum = Cube::Tool::Internal::g3DSTCubes - num - 1;
     int hiBar = Cube::Tool::Internal::g3DSTBars - bar - 1;
     int hiPln = Cube::Tool::Internal::g3DSTPlanes - pln - 1;
@@ -45,6 +47,7 @@ int Cube::Tool::ContainedObject(Cube::ReconObject& object) {
 // Return the distance inside of the 3DST.
 double Cube::Tool::ContainedPoint(TVector3 point) {
     double minDist = 1E+20;
+    Cube::Tool::Initialize();
     minDist = std::min(point.X()-Cube::Tool::Internal::g3DSTCubeMin,minDist);
     minDist = std::min(point.Y()-Cube::Tool::Internal::g3DSTBarMin,minDist);
     minDist = std::min(point.Z()-Cube::Tool::Internal::g3DSTPlaneMin,minDist);
