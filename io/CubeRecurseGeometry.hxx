@@ -83,20 +83,15 @@ public:
         if (!gGeoManager) return false; // Should NEVER happen!
         TGeoNode * node = gGeoManager->GetCurrentNode();
         if (!node) return false;        // Should NEVER happen!
-        if (!Action(node, depth)) {
-            gGeoManager->CdUp();
-            return false;
-        }
 
-        for (int i=0; i< node->GetNdaughters(); ++i) {
-            gGeoManager->CdDown(i);
-            if (!Apply(depth+1)) {
+        if (Action(node,depth)) {
+            for (int i=0; i< node->GetNdaughters(); ++i) {
+                gGeoManager->CdDown(i);
+                Apply(depth+1);
                 gGeoManager->CdUp();
-                return false;
             }
         }
 
-        gGeoManager->CdUp();
         return true;
     }
 };
