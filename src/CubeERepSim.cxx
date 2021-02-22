@@ -84,12 +84,16 @@ namespace {
 #ifdef DOUBLE_CHECK_OUTPUT
 #undef DOUBLE_CHECK_OUTPUT
         CUBE_LOG(0) << "3DST Hit  "
-                  << " " << wHit.GetPosition().X()
-                  << " " << wHit.GetPosition().Y()
-                  << " " << wHit.GetPosition().Z()
-                  << " " << wHit.GetTime()
-                  << " " << wHit.GetCharge()
-                  << std::endl;
+                    << " x " << wHit.GetPosition().X()
+                    << " y " << wHit.GetPosition().Y()
+                    << " z " << wHit.GetPosition().Z()
+                    << " sx " << wHit.GetSize().X()
+                    << " sy " << wHit.GetSize().Y()
+                    << " sz " << wHit.GetSize().Z()
+                    << " t " << wHit.GetTime()
+                    << " q " << wHit.GetCharge()
+                    << " c " << wHit.GetContributorCount()
+                    << std::endl;
 #endif
     }
 
@@ -132,14 +136,15 @@ namespace {
 #ifdef  DOUBLE_CHECK_OUTPUT
 #undef  DOUBLE_CHECK_OUTPUT
         CUBE_LOG(0) << "TPC Hit  "
-                    << " " << wHit.GetPosition().X()
-                    << " " << wHit.GetPosition().Y()
-                    << " " << wHit.GetPosition().Z()
-                    << " " << wHit.GetSize().X()
-                    << " " << wHit.GetSize().Y()
-                    << " " << wHit.GetSize().Z()
-                    << " " << wHit.GetTime()
-                    << " " << wHit.GetCharge()
+                    << " x " << wHit.GetPosition().X()
+                    << " y " << wHit.GetPosition().Y()
+                    << " z " << wHit.GetPosition().Z()
+                    << " sx " << wHit.GetSize().X()
+                    << " sy " << wHit.GetSize().Y()
+                    << " sz " << wHit.GetSize().Z()
+                    << " t " << wHit.GetTime()
+                    << " q " << wHit.GetCharge()
+                    << " c " << wHit.GetContributorCount()
                     << std::endl;
 #endif
     }
@@ -191,14 +196,15 @@ namespace {
 #ifdef  DOUBLE_CHECK_OUTPUT
 #undef  DOUBLE_CHECK_OUTPUT
         CUBE_LOG(0) << "ECAL Hit  "
-                    << " " << wHit.GetPosition().X()
-                    << " " << wHit.GetPosition().Y()
-                    << " " << wHit.GetPosition().Z()
-                    << " " << wHit.GetSize().X()
-                    << " " << wHit.GetSize().Y()
-                    << " " << wHit.GetSize().Z()
-                    << " " << wHit.GetTime()
-                    << " " << wHit.GetCharge()
+                    << " x " << wHit.GetPosition().X()
+                    << " y " << wHit.GetPosition().Y()
+                    << " z " << wHit.GetPosition().Z()
+                    << " sx " << wHit.GetSize().X()
+                    << " sy " << wHit.GetSize().Y()
+                    << " sz " << wHit.GetSize().Z()
+                    << " t " << wHit.GetTime()
+                    << " q " << wHit.GetCharge()
+                    << " c " << wHit.GetContributorCount()
                     << std::endl;
 #endif
     }
