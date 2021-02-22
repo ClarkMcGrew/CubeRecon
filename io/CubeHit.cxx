@@ -179,7 +179,20 @@ void Cube::Hit::ls(Option_t *opt) const {
         TROOT::DecreaseDirLevel();
     }
     std::cout.precision(prec);
+    if (option.find("prop") != std::string::npos) {
+        TROOT::IndentLevel();
+        std::cout << "Properties:" << std::endl;
+        TROOT::IncreaseDirLevel();
+        for (std::map<std::string,double>::const_iterator m
+                 = fProperties.begin();
+             m != fProperties.end(); ++m) {
+            TROOT::IndentLevel();
+            std::cout << m->first << " : " << m->second << std::endl;
+        }
+        TROOT::DecreaseDirLevel();
 
+    }
+#ifdef SHOW_CONSTITUENTS
     TROOT::IncreaseDirLevel();
     for (std::vector< Cube::Handle< Cube::Hit > >::const_iterator h
              = fConstituents.begin();
@@ -188,6 +201,7 @@ void Cube::Hit::ls(Option_t *opt) const {
         h->ls(opt);
     }
     TROOT::DecreaseDirLevel();
+#endif
 }
 
 // Local Variables:
