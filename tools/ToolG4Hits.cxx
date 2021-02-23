@@ -47,7 +47,8 @@ Cube::Tool::HitG4Hits(Cube::Event& event, Cube::Handle<Cube::Hit> hit) {
                     break;
                 }
                 default:
-                    throw std::runtime_error("Inconceivable");
+                    // throw std::runtime_error("Inconceivable");
+                    break;
                 }
             }
         }
@@ -83,15 +84,39 @@ Cube::Tool::HitG4Hits(Cube::Event& event, Cube::Handle<Cube::Hit> hit) {
                 result.push_back(g4Hit);
             }
         }
+#ifdef MUST_BE_TPC_SEGMENTS
         else {
-            std::cout << "Inconcievable."
+            std::cout << "Inconceivable."
                       << " Can't get hit segments for this TPC hit"
                       << std::endl;
             throw std::runtime_error("TPC Hit is invalid");
         }
+#endif
     }
     else if (Cube::Info::IsECal(hit->GetIdentifier())) {
-        std::cout << "Can't get hit segments for ECal yet" << std::endl;
+        if (hit->GetConstituentCount() > 0) {
+            for (int c = 0; c<hit->GetConstituentCount(); ++c) {
+                Cube::Handle<Cube::Hit> hh = hit->GetConstituent(c);
+                std::vector<Cube::Handle<Cube::G4Hit>> tmp(HitG4Hits(event,hh));
+                std::copy(tmp.begin(),tmp.end(),std::back_inserter(result));
+            }
+        }
+        else if (hit->GetContributorCount() > 0) {
+            for (int g = 0; g < hit->GetContributorCount(); ++g) {
+                int seg = hit->GetContributor(g);
+                Cube::Handle<Cube::G4Hit> g4Hit = event.G4Hits[seg];
+                if (!g4Hit) continue;
+                result.push_back(g4Hit);
+            }
+        }
+#ifdef MUST_BE_ECAL_SEGMENTS
+        else {
+            std::cout << "Inconceivable."
+                      << " Can't get hit segments for this ECal hit"
+                      << std::endl;
+            throw std::runtime_error("ECal Hit is invalid");
+        }
+#endif
     }
     return result;
 }
