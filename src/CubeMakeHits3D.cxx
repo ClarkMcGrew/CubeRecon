@@ -109,20 +109,27 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
 
     if (!onlyECal.empty()) {
         std::map<int,Cube::HitSelection> cells;
-        std::map<Cube::Handle<Cube::Hit>,int> madeHitCount;
         for (Cube::HitSelection::iterator h = onlyECal.begin();
              h != onlyECal.end(); ++h) {
             int cell = Cube::Info::ECalModLayCel((*h)->GetIdentifier());
             cells[cell].push_back(*h);
-            madeHitCount[*h] = 0;
         }
-        Cube::HitSelection ecal3D;
         for (std::map<int,Cube::HitSelection>::iterator c = cells.begin();
              c != cells.end(); ++c) {
             for (Cube::HitSelection::iterator h1 = c->second.begin();
                  h1 != c->second.end(); ++h1) {
+                if ((*h1)->GetCharge() < 0.5) {
+                    std::cout << "BAD CHARGE1 " << (*h1)->GetCharge()
+                              << std::endl;
+                    continue;
+                }
                 for (Cube::HitSelection::iterator h2 = h1+1;
                      h2 != c->second.end(); ++h2) {
+                    if ((*h2)->GetCharge() < 0.5) {
+                        std::cout << "BAD CHARGE1 " << (*h1)->GetCharge()
+                                  << std::endl;
+                        continue;
+                    }
                     if (Cube::Info::ECalEnd((*h1)->GetIdentifier())
                         == Cube::Info::ECalEnd((*h2)->GetIdentifier())) {
                         continue;
@@ -130,25 +137,28 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
                     if (Cube::Info::ECalModule((*h1)->GetIdentifier())
                         != Cube::Info::ECalModule((*h2)->GetIdentifier())) {
                         std::cout << "BAD MODULE " << std::endl;
+                        continue;
                     }
                     if (Cube::Info::ECalLayer((*h1)->GetIdentifier())
                         != Cube::Info::ECalLayer((*h2)->GetIdentifier())) {
                         std::cout << "BAD LAYER " << std::endl;
+                        continue;
                     }
                     if (Cube::Info::ECalCell((*h1)->GetIdentifier())
                         != Cube::Info::ECalCell((*h2)->GetIdentifier())) {
                         std::cout << "BAD LAYER " << std::endl;
+                        continue;
                     }
                     double tDiff = (*h2)->GetTime() - (*h1)->GetTime();
                     double vlight = 17.094*unit::cm/unit::ns;
-                    if (std::abs(tDiff) > 6.0*unit::meter/vlight) {
-                        continue;
-                    }
                     TVector3 avg = 0.5*((*h2)->GetPosition()
                                         +(*h1)->GetPosition());
-                    TVector3 dif = ((*h2)->GetPosition()
-                                    - (*h1)->GetPosition()).Unit();
+                    TVector3 dist = (*h2)->GetPosition()-(*h1)->GetPosition();
+                    TVector3 dif = dist.Unit();
                     TVector3 pos = avg + (0.5*tDiff*vlight)*dif;
+                    if (std::abs(tDiff) > dist.Mag()/vlight) {
+                        continue;
+                    }
                     Cube::WritableHit hit3d;
                     hit3d.SetIdentifier(c->first);
                     double q = (*h1)->GetCharge() + (*h2)->GetCharge();
@@ -165,30 +175,11 @@ Cube::MakeHits3D::Process(const Cube::AlgorithmResult& input,
                     hit3d.SetSize(size);
                     hit3d.AddHit(*h1);
                     hit3d.AddHit(*h2);
-                    ++madeHitCount[*h1];
-                    ++madeHitCount[*h2];
-                    ecal3D.push_back(Cube::Handle<Cube::Hit>(
+                    usedHits->push_back(Cube::Handle<Cube::Hit>(
                                             new Cube::Hit(hit3d)));
                 }
             }
         }
-        for (Cube::HitSelection::iterator h = onlyECal.begin();
-             h != onlyECal.end(); ++h) {
-            if (madeHitCount[*h] < 1) ecal3D.push_back(*h);
-        }
-        Cube::Handle<Cube::AlgorithmResult> timeSliceECal
-            = Run<Cube::TimeSlice>(ecal3D);
-        if (timeSliceECal) {
-            timeSliceECal->SetName("timeSliceECal");
-            result->AddAlgorithmResult(timeSliceECal);
-            Cube::Handle<Cube::ReconObjectContainer> slices
-                = timeSliceECal->GetObjectContainer("final");
-            for (Cube::ReconObjectContainer::iterator obj = slices->begin();
-                 obj != slices->end(); ++obj) {
-                finalObjects->push_back((*obj));
-            }
-        }
-        std::copy(ecal3D.begin(),ecal3D.end(),std::back_inserter(*usedHits));
     }
 
     // Slice the 3DST up by time.  Only fibers in the same time slice are used
