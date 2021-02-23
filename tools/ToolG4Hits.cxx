@@ -118,6 +118,11 @@ Cube::Tool::HitG4Hits(Cube::Event& event, Cube::Handle<Cube::Hit> hit) {
         }
 #endif
     }
+    std::sort(result.begin(), result.end());
+    std::vector<Cube::Handle<Cube::G4Hit>>::iterator end
+        = std::unique(result.begin(),result.end());
+    result.erase(end,result.end());
+    std::sort(result.begin(), result.end(), G4HitTimeCompare);
     return result;
 }
 
