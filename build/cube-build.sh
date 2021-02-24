@@ -33,7 +33,7 @@ if [ ! -f CMakeCache.txt ]; then
     cmake -DCMAKE_INSTALL_PREFIX=${CUBE_ROOT}/${CUBE_TARGET} ${CUBE_ROOT}
 fi
 
-make $* || exit 1
+VERBOSE=true make $* || exit 1
 make install || exit 1
 
 echo Use "cube-build force" to force a clean build.

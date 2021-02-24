@@ -16,7 +16,7 @@ set(CMAKE_VERBOSE_MAKEFILE TRUE)
 
 # Configure the dependencies
 find_package(ROOT REQUIRED
-  COMPONENTS Geom Physics Matrix MathCore Tree RIO
+  COMPONENTS Geom EG Physics Matrix MathCore Tree RIO
   Eve TreePlayer Ged RGL Gui Graf Graf3d)
 if(ROOT_FOUND)
   include(${ROOT_USE_FILE})
