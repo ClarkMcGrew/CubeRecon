@@ -77,7 +77,7 @@ target_link_libraries(testECalEff.exe LINK_PUBLIC
 install(TARGETS testECalEff.exe RUNTIME DESTINATION bin)
 
 # Add a test program
-add_executable(testCCInc.exe testCCInc.cxx)
-target_link_libraries(testCCInc.exe LINK_PUBLIC
-  cuberecon_io cuberecon_tools)
-install(TARGETS testCCInc.exe RUNTIME DESTINATION bin)
+# add_executable(testCCInc.exe testCCInc.cxx)
+# target_link_libraries(testCCInc.exe LINK_PUBLIC
+#   cuberecon_io cuberecon_tools)
+# install(TARGETS testCCInc.exe RUNTIME DESTINATION bin)
