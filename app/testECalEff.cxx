@@ -30,6 +30,7 @@
 bool histInitialized = false;
 TH1F* histECalSegTime = NULL;
 TH1F* histECalHitTime = NULL;
+TH1F* histECalHitZ = NULL;
 TH1F* histECalDeltaTime = NULL;
 TH1F* histECalDeltaX = NULL;
 TH1F* histOtherHitTime = NULL;
@@ -42,6 +43,7 @@ TH1F* histUpstreamSpill = NULL;
 TH1F* histTrajectoryTotal = NULL;
 TH1F* histTrajectoryLarge = NULL;
 TH1F* histTrajectorySmall = NULL;
+TH1F* histTrajectorySize = NULL;
 TH1F* histInteractionCount = NULL;
 
 /// Assign ECal hit segments to ecal hits.  This is a test bed for later
@@ -58,6 +60,9 @@ bool AnalyzeEvent(Cube::Event& event) {
         histECalHitTime = new TH1F("ecalHitTime",
                                    "ECal Hit times",
                                    1000, 0.0, 20000.0);
+        histECalHitZ = new TH1F("ecalHitZ",
+                                "ECal Hit Z",
+                                1000, 60000.0, 70000.0);
         histECalDeltaTime = new TH1F("ecalDeltaTime",
                                      "ECal Delta times",
                                      500, -100.0, 500.0);
@@ -81,22 +86,25 @@ bool AnalyzeEvent(Cube::Event& event) {
                                   20, 0.0, 1.0);
         histMuonSpill = new TH1F("muonSpill",
                                  "Muons in ECal per spill",
-                                 40, 0.0, 40.0);
+                                 60, 0.0, 60.0);
         histUpstreamSpill = new TH1F("upstreamSpill",
                                      "Muons in upstream ECal per spill",
                                      40, 0.0, 40.0);
         histTrajectoryTotal = new TH1F("trajectoryTotal",
                                        "Total ECal tracks",
-                                       40, 0.0, 4000.0);
+                                       60, 0.0, 6000.0);
         histTrajectoryLarge = new TH1F("trajectoryLarge",
                                        "ECal tracks with more than 2 hits",
-                                       50, 0.0, 500.0);
+                                       90, 0.0, 900.0);
         histTrajectorySmall = new TH1F("trajectorySmall",
                                        "ECal tracks with less than 3 hits",
-                                       60, 0.0, 3000.0);
+                                       60, 0.0, 6000.0);
+        histTrajectorySize = new TH1F("trajectorySize",
+                                      "ECal muon trajectory size",
+                                      50, 0.0, 100.0);
         histInteractionCount = new TH1F("interactionCount",
                                         "Iteractions per spill hitting ECal",
-                                        40, 0.0, 80.0);
+                                        50, 0.0, 100.0);
     }
 
     Cube::Event::G4TrajectoryContainer& trajectories = event.G4Trajectories;
@@ -112,13 +120,13 @@ bool AnalyzeEvent(Cube::Event& event) {
         }
         if (!Cube::Info::IsECal(hit->GetIdentifier())) continue;
         if (hit->GetTime() < 1.0) continue;
+        if (hit->GetConstituentCount() < 2) continue;
         histECalHitTime->Fill(hit->GetTime());
+        histECalHitZ->Fill(hit->GetPosition().Z());
         ecalOnly.push_back(hit);
     }
 
     // Collect all of the ECal hit segments.
-    std::vector<Cube::Handle<Cube::G4Hit>> segments;
-    std::map<int,std::set<Cube::Handle<Cube::G4Hit>>> trajToSegment;
     for (Cube::Event::G4HitContainer::iterator s = event.G4Hits.begin();
          s != event.G4Hits.end(); ++s) {
         Cube::Handle<Cube::G4Hit> seg = s->second;
@@ -131,65 +139,37 @@ bool AnalyzeEvent(Cube::Event& event) {
         if (!node) continue;
         std::string volumeName = gGeoManager->GetPath();
         if (volumeName.find("kloe_calo_volume") == std::string::npos) continue;
-        segments.push_back(seg);
-        trajToSegment[seg->GetPrimaryId()].insert(seg);
-    }
-
-    // Match the segments to the hits
-    std::map<Cube::Handle<Cube::G4Hit>,Cube::Handle<Cube::Hit>> segmentToHit;
-    std::map<Cube::Handle<Cube::Hit>,std::vector<Cube::Handle<Cube::G4Hit>>>
-        hitToSegments;
-    std::map<int,std::set<Cube::Handle<Cube::Hit>>> trajToHit;
-    for (Cube::Handle<Cube::G4Hit> seg : segments) {
-        TVector3 pnt = 0.5*(seg->GetStart().Vect() + seg->GetStop().Vect());
-        Cube::Handle<Cube::Hit> bestHit;
-        double dist = 1E+20;
-        for (Cube::Handle<Cube::Hit> hit : ecalOnly) {
-            TVector3 diff = hit->GetPosition() - pnt;
-            // double deltaP = std::max(std::abs(diff.Y()), std::abs(diff.Z()));
-            diff.SetX(0);
-            double deltaP = diff.Mag();
-            if (deltaP > dist) continue;
-            double deltaT = seg->GetStart().T() - hit->GetTime();
-            if (deltaT < -50.0*unit::ns) continue;
-#define USE_SHORT_WINDOW
-#ifdef USE_SHORT_WINDOW
-            if (deltaT > 40.0*unit::ns) continue;
-#else
-            if (deltaT > 400.0*unit::ns) continue;
-#endif
-            dist = deltaP;
-            bestHit = hit;
-        }
-        if (dist > 35.0*unit::mm) continue;
-        if (!bestHit) continue;
-        segmentToHit[seg] = bestHit;
-        trajToHit[seg->GetPrimaryId()].insert(bestHit);
-        hitToSegments[bestHit].push_back(seg);
-        histECalSegTime->Fill(seg->GetStart().T());
-        histECalDeltaTime->Fill(seg->GetStart().T()-bestHit->GetTime());
-        histECalDeltaX->Fill(
-            std::abs(seg->GetStart().X()-bestHit->GetPosition().X()));
     }
 
     double total = 0;
     double overlap = 0;
     double interactionOverlap = 0;
     std::set<Cube::Handle<Cube::Hit>> hitWithOverlap;
-    for (auto elem : hitToSegments) {
-        double delta = 0;
+    std::map<int,std::set<Cube::Handle<Cube::Hit>>> trajToHit;
+    for (Cube::Handle<Cube::Hit> hit : ecalOnly) {
+        std::vector<Cube::Handle<Cube::G4Hit>> g4Hits
+            = Cube::Tool::HitG4Hits(event,hit);
+        for (Cube::Handle<Cube::G4Hit> seg : g4Hits) {
+            trajToHit[seg->GetPrimaryId()].insert(hit);
+            histECalSegTime->Fill(seg->GetStart().T());
+            histECalDeltaTime->Fill(seg->GetStart().T()-hit->GetTime());
+            histECalDeltaX->Fill(
+                std::abs(seg->GetStart().X()-hit->GetPosition().X()));
+        }
+
+        double deltaX = 0;
         double deltaT = 0.0;
         double interactionDeltaT = 0.0;
-        if (elem.second.size() > 1) {
-            Cube::Handle<Cube::G4Hit> seg = elem.second.front();
+        if (g4Hits.size() > 1) {
+            Cube::Handle<Cube::G4Hit> seg = g4Hits.front();
             TVector3 pnt = 0.5*(seg->GetStart().Vect() + seg->GetStop().Vect());
-            double x0 = pnt.X();
-            double t0 = seg->GetStart().T();
+            double x1 = pnt.X();
+            double t1 = seg->GetStart().T();
             int trajId1 = Cube::Tool::PrimaryId(event,seg->GetPrimaryId());
             Cube::Event::G4TrajectoryContainer::iterator traj1
                 = event.G4Trajectories.find(trajId1);
-            for (auto seg: elem.second) {
-                int trajId2 = Cube::Tool::PrimaryId(event,seg->GetPrimaryId());
+            for (Cube::Handle<Cube::G4Hit> seg2: g4Hits) {
+                int trajId2 = Cube::Tool::PrimaryId(event,seg2->GetPrimaryId());
                 Cube::Event::G4TrajectoryContainer::iterator traj2
                     = event.G4Trajectories.find(trajId2);
                 if (traj1->second && traj2->second) {
@@ -198,27 +178,32 @@ bool AnalyzeEvent(Cube::Event& event) {
                     interactionDeltaT = std::max(interactionDeltaT,
                                                  std::abs(dt));
                 }
-                pnt = 0.5*(seg->GetStart().Vect() + seg->GetStop().Vect());
-                double x1 = pnt.X();
-                double t1 = seg->GetStart().T();
-                delta = std::max(delta, std::abs(x1-x0));
-                deltaT = std::max(deltaT, std::abs(t1-t0));
+                else {
+                    std::cout << "Missing trajectory" << std::endl;
+                    throw std::runtime_error("Missing trajectory");
+                }
+                pnt = 0.5*(seg2->GetStart().Vect() + seg2->GetStop().Vect());
+                double x2 = pnt.X();
+                double t2 = seg2->GetStart().T();
+                deltaX = std::max(deltaX, std::abs(x2-x1));
+                deltaT = std::max(deltaT, std::abs(t2-t1));
             }
         }
-        ++ total;
-        // if (delta > 500.0 || deltaT > 50.0) {
+        ++total;
         if (interactionDeltaT > 0.50) {
             ++interactionOverlap;
         }
-        if (std::abs(deltaT) > 50.0 || interactionDeltaT > 0.50) {
+        if (std::abs(deltaX) > 50.0*unit::cm
+            || std::abs(deltaT) > 5.0*unit::ns
+            || interactionDeltaT > 0.50*unit::ns) {
             ++overlap;
-            hitWithOverlap.insert(elem.first);
+            hitWithOverlap.insert(hit);
         }
-
     }
     if (total<1) total = 1;
     std::cout << "Hits " << total
               << " " << overlap
+              << " " << hitWithOverlap.size()
               << " " << interactionOverlap
               << " " << overlap/total
               << std::endl;
@@ -228,55 +213,70 @@ bool AnalyzeEvent(Cube::Event& event) {
     double trajectoryTotal = 0;
     double trajectoryLarge = 0;
     double trajectorySmall = 0;
-    double trajectoryCount = 0;
-    double trajectoryOverlaps = 0;
-    double trajectoryUpstreamCount = 0;
-    double trajectoryUpstreamOverlaps = 0;
+    double muonCount = 0;
+    double muonOverlaps = 0;
+    double muonUpstreamCount = 0;
+    double muonUpstreamOverlaps = 0;
     std::vector<int> timeVector;
     for (auto elem : trajToHit) {
         int trId = elem.first;
-        if (trId < 0) continue;
-        Cube::Event::G4TrajectoryContainer::iterator t
+        if (trId < 0) {
+            continue;
+        }
+        Cube::Event::G4TrajectoryContainer::iterator trajElem
             = event.G4Trajectories.find(trId);
-        if (t == event.G4Trajectories.end()) continue;
+        if (trajElem == event.G4Trajectories.end()) {
+            std::cout << "traj id not found" << std::endl;
+            continue;
+        }
         int primId = Cube::Tool::PrimaryId(event,trId);
-        Cube::Event::G4TrajectoryContainer::iterator p
+        Cube::Event::G4TrajectoryContainer::iterator primElem
             = event.G4Trajectories.find(primId);
-        if (p != event.G4Trajectories.end() && p->second) {
-            int integerTime = p->second->GetInitialPosition().T();
+        if (primElem != event.G4Trajectories.end() && primElem->second) {
+            int integerTime = primElem->second->GetInitialPosition().T();
             timeVector.push_back(integerTime);
         }
-        if (elem.second.size() < 1) continue;
-        if (elem.second.size() > 2) ++trajectoryLarge;
-        else if (elem.second.size() > 0) ++trajectorySmall;
+        std::set<Cube::Handle<Cube::Hit>>& hitSet = elem.second;
+        if (hitSet.size() < 1) {
+
+            continue;
+        }
+        if (hitSet.size() > 2) ++trajectoryLarge;
+        else if (hitSet.size() > 0) ++trajectorySmall;
         ++trajectoryTotal;
-        if (std::abs(t->second->GetPDGCode()) != 13) continue;
-        ++trajectoryCount;
+        if (std::abs(trajElem->second->GetPDGCode()) != 13) {
+            continue;
+        }
+        histTrajectorySize->Fill(hitSet.size());
+        ++muonCount;
         int trajOverlaps = 0;
         int upstreamCount = 0;
         int upstreamOverlaps = 0;
         for (Cube::Handle<Cube::Hit> hit : elem.second) {
             if (hit->GetPosition().Z() < 63900) ++upstreamCount;
-            if (hitWithOverlap.find(hit) == hitWithOverlap.end()) continue;
+            if (hitWithOverlap.find(hit) == hitWithOverlap.end()) {
+                continue;
+            }
             ++trajOverlaps;
             if (hit->GetPosition().Z() < 63900) ++upstreamOverlaps;
         }
-        if (trajOverlaps > 0) ++trajectoryOverlaps;
-        if (upstreamCount > 0) ++trajectoryUpstreamCount;
-        if (upstreamOverlaps > 0) ++trajectoryUpstreamOverlaps;
+        if (trajOverlaps > 0) ++muonOverlaps;
+        if (upstreamCount > 0) ++muonUpstreamCount;
+        if (upstreamOverlaps > 0) ++muonUpstreamOverlaps;
     }
-    if (trajectoryCount < 1) trajectoryCount = 1;
-    if (trajectoryUpstreamCount < 1) trajectoryUpstreamCount = 1;
-    std::cout << "Trajectories " << trajectoryCount
-              << " " << trajectoryOverlaps
-              << " " << trajectoryOverlaps/trajectoryCount
-              << " " << trajectoryUpstreamOverlaps/trajectoryUpstreamCount
+    if (muonCount < 1) muonCount = 1;
+    if (muonUpstreamCount < 1) muonUpstreamCount = 1;
+    std::cout << "Trajectories " << trajectoryTotal
+              << " " << muonCount
+              << " " << muonOverlaps
+              << " " << muonOverlaps/muonCount
+              << " " << muonUpstreamOverlaps/muonUpstreamCount
               << std::endl;
-    histMuonOverlap->Fill(trajectoryOverlaps/trajectoryCount);
+    histMuonOverlap->Fill(muonOverlaps/muonCount);
     histUpstreamOverlap
-        ->Fill(trajectoryUpstreamOverlaps/trajectoryUpstreamCount);
-    histMuonSpill->Fill(trajectoryCount);
-    histUpstreamSpill->Fill(trajectoryUpstreamCount);
+        ->Fill(muonUpstreamOverlaps/muonUpstreamCount);
+    histMuonSpill->Fill(muonCount);
+    histUpstreamSpill->Fill(muonUpstreamCount);
     histTrajectorySmall->Fill(trajectorySmall);
     histTrajectoryLarge->Fill(trajectoryLarge);
     histTrajectoryTotal->Fill(trajectoryTotal);
@@ -285,11 +285,10 @@ bool AnalyzeEvent(Cube::Event& event) {
     std::vector<int>::iterator iend = std::unique(timeVector.begin(),
                                                   timeVector.end());
     timeVector.erase(iend,timeVector.end());
-    std::cout << timeVector.size() << std::endl;
     histInteractionCount->Fill(timeVector.size());
 
     // Uncomment to save all of the CC0pi events.
-    // shouldSave = true;
+    shouldSave = true;
     return shouldSave;
 }
 

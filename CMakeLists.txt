@@ -21,7 +21,8 @@ endif (APPLE)
 
 # Make sure that ROOT is available.  ROOT is absolutely required.
 find_package(ROOT REQUIRED
-  COMPONENTS Geom Physics Matrix MathCore Tree RIO)
+  COMPONENTS Geom EG Physics Matrix MathCore Tree RIO
+  Eve TreePlayer Ged RGL Gui Graf Graf3d)
 if(ROOT_FOUND)
   message("Root has been found")
   include(${ROOT_USE_FILE})
