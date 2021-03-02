@@ -17,7 +17,6 @@ int Cube::Tool::Internal::g3DSTCubes = 0;
 double Cube::Tool::Internal::g3DSTCubeMin = 1E+20;
 double Cube::Tool::Internal::g3DSTCubeMax = -1E+20;
 
-
 namespace {
     bool gInitialized = false;
     class ToolRecursion: public Cube::RecurseGeometry {
