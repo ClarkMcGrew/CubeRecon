@@ -194,6 +194,15 @@ bool AnalyzeEvent(Cube::Event& event) {
                   << std::endl;
     }
 
+    // Cache all of the main trajectory results
+    std::map<Cube::Handle<Cube::ReconTrack>,int> mainTrajectoryCache;
+    for (Cube::Handle<Cube::ReconObject> obj : *objects) {
+        Cube::Handle<Cube::ReconTrack> track = obj;
+        if (!track) continue;
+        int mainTrajectory = Cube::Tool::MainTrajectory(event,*obj);
+        if (mainTrajectory<0) continue;
+        mainTrajectoryCache[track] = mainTrajectory+1;
+    }
 
     // Collect the TPC tracks.
     Cube::ReconObjectContainer tracksTPC;
@@ -240,7 +249,7 @@ bool AnalyzeEvent(Cube::Event& event) {
     std::vector<Cube::Handle<Cube::ReconObject>> matchCand3DST;
     for (Cube::Handle<Cube::ReconObject> dst : tracks3DST) {
         Cube::Handle<Cube::ReconTrack> track3DST = dst;
-        int trajId3DST = Cube::Tool::MainTrajectory(event,*track3DST);
+        int trajId3DST = mainTrajectoryCache[track3DST] - 1;
         if (trajId3DST < 0) continue;
         Cube::Event::G4TrajectoryContainer::iterator
             t = event.G4Trajectories.find(trajId3DST);
@@ -267,7 +276,7 @@ bool AnalyzeEvent(Cube::Event& event) {
     std::vector<MatchedTracks> matchedTracks;
     for (Cube::Handle<Cube::ReconObject> tpc : tracksTPC) {
         Cube::Handle<Cube::ReconTrack> trackTPC = tpc;
-        int trajIdTPC = Cube::Tool::MainTrajectory(event,*trackTPC);
+        int trajIdTPC = mainTrajectoryCache[trackTPC]-1;
         if (trajIdTPC < 0) continue;
         Cube::Event::G4TrajectoryContainer::iterator
             t = event.G4Trajectories.find(trajIdTPC);
@@ -340,7 +349,7 @@ bool AnalyzeEvent(Cube::Event& event) {
 #define PID_THREE_DST
 #ifdef PID_THREE_DST
             // Might be a match, so check the PID.
-            int trajId3DST = Cube::Tool::MainTrajectory(event,*track3DST);
+            int trajId3DST = mainTrajectoryCache[track3DST]-1;
             if (trajId3DST < 0) continue;
             Cube::Event::G4TrajectoryContainer::iterator
                 t = event.G4Trajectories.find(trajId3DST);
@@ -379,7 +388,7 @@ bool AnalyzeEvent(Cube::Event& event) {
         double bestCos = 1E+20;
         TVector3 posDST = track3DST->GetFront()->GetPosition().Vect();
         TVector3 dirDST = track3DST->GetFront()->GetDirection();
-        int trajId3DST = Cube::Tool::MainTrajectory(event,*track3DST);
+        int trajId3DST = mainTrajectoryCache[track3DST]-1;
         double bestDistance = 1E+20;
         for (Cube::Handle<Cube::ReconObject> dst : tracks3DST) {
             Cube::Handle<Cube::ReconTrack> cand = dst;
@@ -387,7 +396,7 @@ bool AnalyzeEvent(Cube::Event& event) {
             if (!cand) continue;
             // Make sure the candidate isn't the same as the track.
             if (track3DST == cand) continue;
-            int trajIdCand = Cube::Tool::MainTrajectory(event,*cand);
+            int trajIdCand = mainTrajectoryCache[cand]-1;
             if (trajIdCand != trajId3DST) continue;
             match.push_front(cand);
         }
@@ -433,8 +442,8 @@ bool AnalyzeEvent(Cube::Event& event) {
         lastTime = match.front()->GetPosition().T();
 
         // Get the truth information...
-        int trajId3DST = Cube::Tool::MainTrajectory(event,*match.front());
-        int trajIdTPC =  Cube::Tool::MainTrajectory(event,*match.back());
+        int trajId3DST = mainTrajectoryCache[match.front()]-1;
+        int trajIdTPC =  mainTrajectoryCache[match.back()]-1;
         if (trajIdTPC < 0) {
             std::cout << "BAD TPC TRACK MATCH" << std::endl;
             continue;
@@ -569,7 +578,7 @@ bool AnalyzeEvent(Cube::Event& event) {
         double  minDeltaT = 1E+20;
         bool matchedTrajectory = false;
         for (MatchedTracks cand : mipCandidates) {
-            int trajId3DST = Cube::Tool::MainTrajectory(event,*cand.front());
+            int trajId3DST = mainTrajectoryCache[cand.front()]-1;
             int primId3DST = Cube::Tool::PrimaryId(event,trajId3DST);
             Cube::Event::G4TrajectoryContainer::iterator
                 t = event.G4Trajectories.find(primId3DST);
@@ -609,8 +618,8 @@ bool AnalyzeEvent(Cube::Event& event) {
         bool wrongSign = false;
         bool externalInteraction = false;
 
-        int trajId3DST = Cube::Tool::MainTrajectory(event,*cand.front());
-        int trajIdTPC =  Cube::Tool::MainTrajectory(event,*cand.back());
+        int trajId3DST = mainTrajectoryCache[cand.front()]-1;
+        int trajIdTPC = mainTrajectoryCache[cand.back()]-1;
         Cube::Event::G4TrajectoryContainer::iterator
             t = event.G4Trajectories.find(trajIdTPC);
         if (t == event.G4Trajectories.end()) {
@@ -707,7 +716,7 @@ bool AnalyzeEvent(Cube::Event& event) {
     }
 
     // Uncomment to save all of the events.
-    shouldSave = true;
+    // shouldSave = true;
     return shouldSave;
 }
 
