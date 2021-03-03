@@ -71,8 +71,19 @@ public:
         /// mask is checked using UsesDetector().
         kDST         = BIT(12),
 
+        kTPCBack     = BIT(13),
+        kTPCTop      = BIT(14),
+        kTPCBot      = BIT(15),
+        kTPC         = (kTPCBack|kTPCBot|kTPCTop),
+
+        kECalBarrel  = BIT(16),
+        kECalLeft    = BIT(17),
+        kECalRight   = BIT(18),
+        kECal        = (kECalBarrel|kECalLeft|kECalRight),
+
         /// A mask for all of the detector bits.
-        kDetectorMask   = kDST,
+        kDetectorMask   = (kDST|kTPC|kECal),
+
     } StateBits;
 
     /// A status value with one or more bits sets
