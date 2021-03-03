@@ -4,6 +4,7 @@
 #include <CubeHitSelection.hxx>
 #include <CubeHit.hxx>
 #include <CubeInfo.hxx>
+#include <CubeReconNode.hxx>
 
 double Cube::Tool::DistanceBetweenObjects(Cube::ReconObject& obj1,
                                           Cube::ReconObject& obj2) {
@@ -75,6 +76,21 @@ std::string Cube::Tool::ObjectDetectors(Cube::ReconObject& obj) {
     }
 
     return result;
+}
+
+double Cube::Tool::TrackLength(const Cube::ReconTrack& track) {
+    TVector3 lastPosition = track.GetFront()->GetPosition().Vect();
+    double length = 0.0;
+    for (Cube::Handle<Cube::ReconNode> node : track.GetNodes()) {
+        Cube::Handle<Cube::TrackState> state = node->GetState();
+        if (!state) {
+            throw std::runtime_error(
+                "Cube::Tool::TrackLength -- Track with non-track state");
+        }
+        length += (state->GetPosition().Vect() - lastPosition).Mag();
+        lastPosition = state->GetPosition().Vect();
+    }
+    return length;
 }
 
 // Local Variables:

@@ -4,6 +4,7 @@
 #include <CubeUnits.hxx>
 #include <CubeEvent.hxx>
 #include <CubeReconObject.hxx>
+#include <CubeReconTrack.hxx>
 
 namespace Cube {
     namespace Tool {
@@ -23,6 +24,8 @@ namespace Cube {
         // based on the hits are in the object.
         std::string ObjectDetectors(Cube::ReconObject& obj);
 
+        // Return the length of the track.
+        double TrackLength(const Cube::ReconTrack& track);
     }
 }
 #endif
