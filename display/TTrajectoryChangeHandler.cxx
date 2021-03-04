@@ -1,3 +1,5 @@
+#include <CubeUnits.hxx>
+
 #include "TTrajectoryChangeHandler.hxx"
 #include "TEventDisplay.hxx"
 #include "TGUIManager.hxx"
@@ -44,6 +46,13 @@ void Cube::TTrajectoryChangeHandler::Apply() {
          ++t) {
         Cube::Handle<Cube::G4Trajectory> traj = t->second;
 
+#ifndef INCLUDE_ROCK_TRAJECTORIES
+        {
+            TVector3 pos = traj->GetInitialPosition().Vect();
+            TVector3 center(0.0, -3000.0*unit::mm, 63.0*unit::meter);
+            if ((pos-center).Mag() > 5*unit::meter) continue;
+        }
+#endif
         double eKin = traj->GetInitialMomentum().E() -
             traj->GetInitialMomentum().M();
         if (eKin < 5.0) eKin = 5.0;
@@ -77,12 +86,9 @@ void Cube::TTrajectoryChangeHandler::Apply() {
               << " (" << eKin << " MeV)";
 
         if (traj->GetParentId() < 0) {
-            std::cout << "Trajectory " << traj->GetTrackId()
+            std::cout << "Primary " << traj->GetTrackId()
                       << " " << pdgName
-                      << " from " << traj->GetParentId()
                       << " " << eKin << " MeV"
-                      << std::endl;
-            std::cout << pdgName << " " << eKin
                       << " " << beta
                       << " " << wght << " " << iWght
                       << " " << charged << std::endl;

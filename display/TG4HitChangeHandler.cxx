@@ -80,6 +80,7 @@ void Cube::TG4HitChangeHandler::Apply() {
         title << std::fixed << std::setprecision(2)
               << " " << dEdX/(unit::keV/unit::mm) << " keV/mm";
         title << " for " << length << " mm";
+        title << " @ " << gh->GetStart().T()/unit::ns << " ns";
 
         eveHit->SetTitle(title.str().c_str());
         eveHit->SetLineWidth(1);
