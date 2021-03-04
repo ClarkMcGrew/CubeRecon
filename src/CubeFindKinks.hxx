@@ -33,8 +33,14 @@ public:
             const Cube::AlgorithmResult& in1 = Cube::AlgorithmResult::Empty,
             const Cube::AlgorithmResult& in2 = Cube::AlgorithmResult::Empty);
 
+    /// Set the nominal length of the sequence hits to scan for a kink.  The
+    /// hits are already ordered.  The scan length will be reduced when there
+    /// aren't enough hits.
     void SetScanLength(int i) {fScanLength = i;}
 
+    /// Set the minimum length of the sequence hits to scan for a kink.  The
+    /// scan length won't be reduced below this length, even when there aren't
+    /// enough hits.
     void SetMinimumScanLength(int i) {
         fMinimumScanLength = i;
     }
