@@ -33,7 +33,7 @@ Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
     // The input hits are assumed to come from a single time-slice, and have
     // had any ghost hit removal already done.  Every hit in the input
     // *should* be used in the output.  Every hit in the input *should* be a
-    // cube hit.
+    // 3D hit.
     Cube::Handle<Cube::HitSelection> inputHits = input.GetHitSelection();
 
 #ifdef EXPLORE_RUN_TIME
@@ -86,16 +86,14 @@ Cube::TreeRecon::Process(const Cube::AlgorithmResult& input,
         currentResult = spanningTree;
         result->AddAlgorithmResult(currentResult);
 
-        Cube::Handle<Cube::AlgorithmResult> findKinks;
-        if (!isTPC)
-            findKinks = Run<Cube::FindKinks>(*currentResult);
-        else {
-            // Further break the clusters based on kinks.
-            std::unique_ptr<Cube::FindKinks> ptr(new Cube::FindKinks);
+        // Further break the clusters based on kinks.
+        std::unique_ptr<Cube::FindKinks> ptr(new Cube::FindKinks);
+        if (isTPC) {
             ptr->SetScanLength(50);
             ptr->SetMinimumScanLength(30);
-            findKinks = ptr->Process(*currentResult);
         }
+        Cube::Handle<Cube::AlgorithmResult> findKinks
+            = ptr->Process(*currentResult);
         if (!findKinks) break;
         currentResult = findKinks;
         result->AddAlgorithmResult(currentResult);
